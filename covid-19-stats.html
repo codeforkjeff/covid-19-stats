@@ -8,6 +8,11 @@
         -webkit-user-select: none;
         -ms-user-select: none;
     }
+    .canvas-container {
+        width: 85%;
+        margin-top: 1em;
+        margin-bottom: 1em
+    }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
@@ -138,10 +143,10 @@
             return data.filter(function(record) {
                 return record.state == state && record[field] > 0 && !!record.date;
             }).map(function(record) {
-                    return {
-                        x: record.date,
-                        y: record[field] / (pop / 1000000)
-                    }
+                return {
+                    x: record.date,
+                    y: record[field] / (pop / 1000000)
+                }
             }).sort(comparator);
         }
 
@@ -193,8 +198,6 @@
                     return acc;
                 }, {})
 
-            var labels;
-
             if(align_start) {
                 Object.keys(data_for_states).forEach((state) => {
                     var dataset = data_for_states[state];
@@ -210,10 +213,11 @@
                         return acc;
                     }, [])
                 })
-                labels = union_labels(Object.values(data_for_states));
+            }
 
-            } else {
-                labels = union_labels(Object.values(data_for_states));
+            var labels = union_labels(Object.values(data_for_states));
+
+            if(!align_start) {
                 Object.values(data_for_states).forEach(dataset => zero_fill(dataset, labels));
             }
  
@@ -345,16 +349,16 @@
 </head>
 
 <body>
-    <div style="width: 85%; margin-top: 1em; margin-bottom: 1em">
+    <div class="canvas-container">
         <canvas id="canvas-positives"></canvas>
     </div>
-    <div style="width: 85%; margin-top: 1em; margin-bottom: 1em">
+    <div class="canvas-container">
         <canvas id="canvas-deaths"></canvas>
     </div>
-    <div style="width: 85%; margin-top: 1em; margin-bottom: 1em">
+    <div class="canvas-container">
         <canvas id="canvas-positives-aligned"></canvas>
     </div>
-    <div style="width: 85%; margin-top: 1em; margin-bottom: 1em">
+    <div class="canvas-container">
         <canvas id="canvas-deaths-aligned"></canvas>
     </div>
     <p>
