@@ -131,7 +131,7 @@
 			var pop = parseFloat(states.filter(state_record => state_record[1] == state)[0][2]);
 
 	  		return data.filter(function(record) {
-	  			return record.state == state && !!record.death && !!record.date;
+	  			return record.state == state && !!record[field] && !!record.date;
 	  		}).map(function(record) {
 	  				return {
 		  				x: record.date,
