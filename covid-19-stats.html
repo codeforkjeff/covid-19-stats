@@ -13,6 +13,61 @@
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 	<script>
 
+		//https://medialab.github.io/iwanthue/
+		var colors =[
+			"#000000",
+			"#55bb6a",
+			"#a04bc5",
+			"#52c854",
+			"#b82c90",
+			"#7cb537",
+			"#626cde",
+			"#b6bf36",
+			"#7b55b3",
+			"#3c8f2b",
+			"#e663c1",
+			"#5ece9d",
+			"#e0458b",
+			"#347a3c",
+			"#d07ce5",
+			"#6d8d31",
+			"#a24e99",
+			"#dea833",
+			"#658ad8",
+			"#e2772d",
+			"#5da3d6",
+			"#bc411e",
+			"#48c6ca",
+			"#e74e49",
+			"#41a68c",
+			"#db3c64",
+			"#5da066",
+			"#ac3e67",
+			"#9bbd6f",
+			"#5f5ea0",
+			"#91932e",
+			"#c291d6",
+			"#506b15",
+			"#df82ab",
+			"#367042",
+			"#b64342",
+			"#308266",
+			"#e28084",
+			"#1a6447",
+			"#e78d69",
+			"#4d662b",
+			"#925178",
+			"#c4b468",
+			"#a25356",
+			"#849357",
+			"#a0592f",
+			"#666828",
+			"#dc9e57",
+			"#806229",
+			"#a6791b",
+			"#b38e57"
+		];
+
 		// census 2019 population estimates
 		var states = [
 			["Alabama", "AL", "4903185"],
@@ -66,61 +121,11 @@
 			["West Virginia", "WV", "1792147"],
 			["Wisconsin", "WI", "5822434"],
 			["Wyoming", "WY", "578759"]
-		];
-
-		//https://medialab.github.io/iwanthue/
-		var colors =[
-			"#55bb6a",
-			"#a04bc5",
-			"#52c854",
-			"#b82c90",
-			"#7cb537",
-			"#626cde",
-			"#b6bf36",
-			"#7b55b3",
-			"#3c8f2b",
-			"#e663c1",
-			"#5ece9d",
-			"#e0458b",
-			"#347a3c",
-			"#d07ce5",
-			"#6d8d31",
-			"#a24e99",
-			"#dea833",
-			"#658ad8",
-			"#e2772d",
-			"#5da3d6",
-			"#bc411e",
-			"#48c6ca",
-			"#e74e49",
-			"#41a68c",
-			"#db3c64",
-			"#5da066",
-			"#ac3e67",
-			"#9bbd6f",
-			"#5f5ea0",
-			"#91932e",
-			"#c291d6",
-			"#506b15",
-			"#df82ab",
-			"#367042",
-			"#b64342",
-			"#308266",
-			"#e28084",
-			"#1a6447",
-			"#e78d69",
-			"#4d662b",
-			"#925178",
-			"#c4b468",
-			"#a25356",
-			"#849357",
-			"#a0592f",
-			"#666828",
-			"#dc9e57",
-			"#806229",
-			"#a6791b",
-			"#b38e57"
-		];
+		].map((state, idx) => { state[3] = colors[idx]; return state; })
+		.reduce((acc, state) => {
+			acc[state[1]] = state;
+			return acc;
+		}, {})
 
 		function comparator(a,b) {
  			return a.x < b.x ? -1 : 0;
@@ -128,10 +133,10 @@
 
  		// filter data from COVID tracking by state and transform to objects fit for chartjs
 		function get_state(data, state, field) {
-			var pop = parseFloat(states.filter(state_record => state_record[1] == state)[0][2]);
+			var pop = parseFloat(states[state][2]);
 
 	  		return data.filter(function(record) {
-	  			return record.state == state && !!record[field] && !!record.date;
+	  			return record.state == state && record[field] > 0 && !!record.date;
 	  		}).map(function(record) {
 	  				return {
 		  				x: record.date,
@@ -177,20 +182,28 @@
 
 		// data for a chart
 		function get_chart_data(data, field) {
-	  		var states_to_display = states.map(state => state[1])
+	  		var states_to_display = Object.keys(states);
 
-	  		var data_for_states = states_to_display.map(state => get_state(data, state, field));
+	  		var data_for_states = states_to_display
+	  			.reduce((acc, state) => {
+	  				var state_data = get_state(data, state, field);
+	  				if(state_data.some(point => point.y > 0)) {
+		  				acc[state] = state_data;
+	  				}
+	  				return acc;
+	  			}, {})
 
-			var labels = union_labels(data_for_states);
+			var labels = union_labels(Object.values(data_for_states));
 
-	  		data_for_states.forEach(dataset => zero_out(dataset, labels));
+	  		Object.values(data_for_states).forEach(dataset => zero_out(dataset, labels));
 
-	  		var chart_data = data_for_states.map(function(dataset, idx) {
+	  		var chart_data = Object.keys(data_for_states).map(function(state, idx) {
+	  			var color = states[state][3];
 	  			return {
-	  				label: states_to_display[idx],
-					backgroundColor: colors[idx],
-					borderColor: colors[idx],
-					data: dataset,
+	  				label: state,
+					backgroundColor: color,
+					borderColor: color,
+					data: data_for_states[state],
 					fill: false,
 					lineTension: 0
 	  			}
