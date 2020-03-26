@@ -1,0 +1,303 @@
+
+# python >= 3.7.4
+
+import codecs
+from collections import namedtuple
+import csv
+import glob
+import json
+import os
+import os.path
+import sqlite3
+import sys
+import urllib.request
+
+
+Path = namedtuple('Path', ['path', 'date'])
+
+
+def get_sortable_date(path):
+    basename = os.path.basename(path)
+    return basename[6:10] + basename[0:2] + basename[3:5]
+
+
+def load_csse(conn):
+
+    # assumes COVID-19 repo has been cloned to home directory
+    spec = os.path.join(os.getenv("HOME"), 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
+
+    paths = [Path(path, get_sortable_date(path)) for path in glob.glob(spec)]
+
+    filtered_paths = [p for p in paths if p.date >= '20200322']
+
+    all_rows = []
+
+    for path in filtered_paths:
+        print(f"Loading from {path.path}")
+        with codecs.open(path.path, encoding='utf8') as f:
+            reader = csv.reader(f)
+            rows = [[path.date] + row for row in reader]
+            rows = rows[1:]
+
+            all_rows += rows
+
+    print(f"Writing {len(all_rows)} rows to the database")
+
+    c = conn.cursor()
+
+    c.execute('''
+        DROP TABLE IF EXISTS csse;
+    ''')
+
+    # Create table
+    c.execute('''
+        CREATE TABLE csse (
+            Date text,
+            FIPS text,
+            Admin2 text,
+            Province_State text,
+            Country_Region text,
+            Last_Update text,
+            Lat text,
+            Long_ text,
+            Confirmed int,
+            Deaths int,
+            Recovered int,
+            Active int,
+            Combined_Key text,
+            ShouldHaveFIPS int
+            )
+
+    ''')
+
+    c.executemany('INSERT INTO csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
+
+    conn.commit()
+
+    c.execute('''
+        UPDATE csse
+        SET ShouldHaveFIPS = 1
+        WHERE
+            Country_Region = 'US'
+            AND Admin2 <> 'Unassigned'
+            AND Admin2 <> 'Unknown'
+            AND Admin2 not like 'Out of%'
+            AND Admin2 not like 'Out-of-%'
+            And Province_State <> 'Recovered'
+    ''')
+
+    # fix some FIPS codes that aren't properly zero-padded
+    c.execute('''
+        UPDATE csse
+        SET
+            FIPS = substr('0000000000' || FIPS, -5, 5)
+        WHERE
+            ShouldHaveFIPS = 1
+            AND length(fips) <> 5
+            AND length(fips) > 0
+    ''')
+
+    conn.commit()
+
+    # -- find rows that should havbe a fips code but doesn't.
+    # -- I think these are actually okay to let by.
+    #
+    # select distinct combined_key
+    # from csse
+    # where
+    #     shouldhavefips = 1
+    #     and (fips is null or length(fips) <> 5 or fips = '00000')
+
+    c.close()
+
+
+def load_county_info(conn):
+
+    path = "stage/co-est2019-alldata.csv"
+
+    if not os.path.exists(path):
+        print("Downloading county info into stage dir")
+        with urllib.request.urlopen('https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/counties/totals/co-est2019-alldata.csv') as f:
+            data = f.read()
+            with open(path, 'wb') as output:
+                output.write(data)
+
+    print("Loading county data into database")
+
+    column_names = []
+
+    with codecs.open(path, encoding='latin1') as f:
+        reader = csv.reader(f)
+        rows = [row for row in reader]
+        column_names = rows[0]
+        rows = rows[1:]
+
+    c = conn.cursor()
+
+    c.execute('''
+        DROP TABLE IF EXISTS county_population;
+    ''')
+
+    # Create table
+    c.execute('''
+        CREATE TABLE county_population ('''
+            + ",".join([col + " text" for col in column_names]) +
+        ''')
+    ''')
+
+    c.executemany('INSERT INTO county_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+
+    conn.commit()
+
+    c.execute('DROP TABLE IF EXISTS fips_population')
+
+    c.execute('''
+        CREATE TABLE fips_population
+        AS SELECT
+            STATE || COUNTY AS FIPS,
+            POPESTIMATE2019
+        FROM county_population;
+    ''')
+
+    conn.commit()
+
+    c.close()
+
+
+def create_ranked(conn):
+
+    c = conn.cursor()
+
+    c.execute('''
+        DROP TABLE IF EXISTS ranked;
+    ''')
+
+    c.execute('''
+        CREATE TABLE ranked (
+            Date text,
+            FIPS text,
+            Admin2 text,
+            Province_State text,
+            Country_Region text,
+            Confirmed int,
+            Deaths int,
+            Population int,
+            ConfirmedPer1M real,
+            DeathsPer1M real,
+            ConfirmedRank int,
+            DeathRank int
+        )
+    ''')
+
+    c.execute('''
+        WITH RegionsWithData AS (
+            -- only take U.S. regions that have data
+            select FIPS
+            from csse
+            where
+                Country_Region = 'US'
+                AND LENGTH(FIPS) > 0
+            group by FIPS
+            Having SUM(Confirmed > 0) or SUM(Deaths) > 0 or SUM(Recovered) > 0 or sum(active) > 0
+        )
+        ,Filtered AS (
+            SELECT
+                t1.*
+            FROM csse t1
+            JOIN RegionsWithData t2
+                ON t1.FIPS = t2.FIPS
+        )
+        ,WithPopulation AS (
+            SELECT
+                t1.*
+                ,POPESTIMATE2019 as Population
+                ,CAST(Confirmed AS REAL) / (CAST(POPESTIMATE2019 AS REAL) / 1000000) as ConfirmedPer1M
+                ,CAST(Deaths AS REAL) / (CAST(POPESTIMATE2019 AS REAL) / 1000000) as DeathsPer1M
+            FROM Filtered t1
+            LEFT JOIN fips_population t2
+                ON t1.FIPS = t2.FIPS 
+        )
+        ,WithMax AS (
+            SELECT
+                *
+                ,MAX(ConfirmedPer1M) OVER (PARTITION BY FIPS) AS MaxConfirmedPer1M 
+                ,MAX(DeathsPer1M) OVER (PARTITION BY FIPS) AS MaxDeathsPer1M
+            FROM WithPopulation 
+        )
+        ,WithRank AS (
+            SELECT
+                FIPS
+                ,MaxConfirmedPer1M
+                ,MaxDeathsPer1M
+                ,ROW_NUMBER() OVER (ORDER BY MaxConfirmedPer1M DESC) As ConfirmedRank
+                ,ROW_NUMBER() OVER (ORDER BY MaxDeathsPer1M DESC) As DeathRank
+            FROM WithMax
+            GROUP BY FIPS, MaxConfirmedPer1M, MaxDeathsPer1M
+        )
+        INSERT INTO ranked
+        SELECT
+            Date
+            ,t1.FIPS
+            ,Admin2
+            ,Province_State
+            ,Country_Region
+            ,Confirmed
+            ,Deaths
+            ,Population
+            ,ConfirmedPer1M
+            ,DeathsPer1M
+            ,ConfirmedRank
+            ,DeathRank
+        FROM WithMax t1
+        LEFT JOIN WithRank t2
+            ON t1.FIPS = t2.FIPS
+        ORDER BY ConfirmedRank
+    ''')
+
+    conn.commit()
+
+    c.close()
+
+
+def row_to_dict(row):
+    d = {}
+    for column in row.keys():
+        d[column] = row[column]
+    return d
+
+
+def export_ranked(conn):
+
+    c = conn.cursor()
+
+    c.execute('''
+        SELECT * FROM ranked;
+    ''')
+
+    rows = c.fetchall()
+
+    # with codecs.open("counties_ranked.csv", "w", encoding='utf8') as f:
+    #     for column in rows[0].keys():
+    #         print(column)
+    #         f.write(column)
+    #         f.write("\t")
+    #     f.write("\n")
+    #     for row in rows[1:]:
+    #         for value in row:
+    #             f.write(str(value))
+    #             f.write("\t")
+    #         f.write("\n")
+
+    with codecs.open("data/counties_ranked.json", "w", encoding='utf8') as f:
+        f.write(json.dumps([row_to_dict(row) for row in rows]))
+
+
+conn = sqlite3.connect('stage/covid19.db')
+conn.row_factory = sqlite3.Row
+
+load_csse(conn)
+load_county_info(conn)
+create_ranked(conn)
+export_ranked(conn)
+conn.close()
+
