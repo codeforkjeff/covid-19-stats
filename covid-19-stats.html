@@ -147,9 +147,7 @@
 
 		// get the labels (unique X values) from a dataset
 		function get_labels(dataset) {
-			return dataset.map(function(data) {
-				return data.x;
-			})
+			return dataset.map((point) => point.x);
 		}
 
 		function union_labels(datasets) {
@@ -171,7 +169,9 @@
 		    return _difference
 		}
 
-		function zero_out(dataset, labels) {
+		// fill in dataset with points with 0 value if it doesn't have entries in labels
+		// chartjs doesn't display tooltips correctly unless we do this
+		function zero_fill(dataset, labels) {
 			var existing = get_labels(dataset);
 			var missing = difference(new Set(labels), new Set(existing))
 			missing.forEach(function(missing_label) {
@@ -181,7 +181,7 @@
 		}
 
 		// data for a chart
-		function get_chart_data(data, field) {
+		function get_chart_data(data, field, align_start = false) {
 	  		var states_to_display = Object.keys(states);
 
 	  		var data_for_states = states_to_display
@@ -193,10 +193,30 @@
 	  				return acc;
 	  			}, {})
 
-			var labels = union_labels(Object.values(data_for_states));
+			var labels;
 
-	  		Object.values(data_for_states).forEach(dataset => zero_out(dataset, labels));
+	  		if(align_start) {
+				Object.keys(data_for_states).forEach((state) => {
+					var dataset = data_for_states[state];
+					data_for_states[state] = dataset
+					.filter(point => point.y > 0)
+					.reduce((acc, point, idx) => {
+						if(point.y > 0) {
+							if(acc.length == 0) {
+								acc.push({ x: "Day 000", y: 0});
+							}
+							acc.push({ x: "Day " + String(acc.length).padStart(3, "0"), y: point.y});
+						}
+						return acc;
+					}, [])
+				})
+				labels = union_labels(Object.values(data_for_states));
 
+	  		} else {
+				labels = union_labels(Object.values(data_for_states));
+	  			Object.values(data_for_states).forEach(dataset => zero_fill(dataset, labels));
+	  		}
+ 
 	  		var chart_data = Object.keys(data_for_states).map(function(state, idx) {
 	  			var color = states[state][3];
 	  			return {
@@ -213,6 +233,10 @@
 	  			labels: labels,
 	  			chart_data: chart_data
 	  		};
+	  	}
+
+	  	function copy_object(obj) {
+	  		return JSON.parse(JSON.stringify(obj));
 	  	}
 
 		$(document).ready(function() {
@@ -262,7 +286,7 @@
 
 				var chart_data_positives = get_chart_data(data, 'positive');
 
-				var config_positives = JSON.parse(JSON.stringify(config_template)); // deep copy
+				var config_positives = copy_object(config_template);
 
 				config_positives.options.title.text = 'Positive Tests Per 1M Population by State';
 				config_positives.data.labels = chart_data_positives.labels;
@@ -275,7 +299,7 @@
 
 				var chart_data_deaths = get_chart_data(data, 'death');
 
-				var config_deaths = JSON.parse(JSON.stringify(config_template)); // deep copy
+				var config_deaths = copy_object(config_template);
 
 				config_deaths.options.title.text = 'Total Cumulative Deaths Per 1M Population by State';
 				config_deaths.data.labels = chart_data_deaths.labels;
@@ -283,6 +307,33 @@
 
 				var ctx_deaths = document.getElementById('canvas-deaths').getContext('2d');
 				new Chart(ctx_deaths, config_deaths);
+
+				// positives chart, aligned
+
+				var chart_data_positives_aligned = get_chart_data(data, 'positive', true);
+
+				var config_positives_aligned = copy_object(config_template);
+
+				config_positives_aligned.options.title.text = 'Positive Tests Per 1M Population by State, Aligned to First Positive Test';
+				config_positives_aligned.data.labels = chart_data_positives_aligned.labels;
+				config_positives_aligned.data.datasets = chart_data_positives_aligned.chart_data;
+
+				var ctx_positives_aligned = document.getElementById('canvas-positives-aligned').getContext('2d');
+				new Chart(ctx_positives_aligned, config_positives_aligned);
+
+				// deaths chart
+
+				var chart_data_deaths_aligned = get_chart_data(data, 'death', true);
+
+				var config_deaths_aligned = copy_object(config_template);
+
+				config_deaths_aligned.options.title.text = 'Total Cumulative Deaths Per 1M Population by State, Aligned to First Death';
+				config_deaths_aligned.data.labels = chart_data_deaths_aligned.labels;
+				config_deaths_aligned.data.datasets = chart_data_deaths_aligned.chart_data;
+
+				var ctx_deaths_aligned = document.getElementById('canvas-deaths-aligned').getContext('2d');
+				new Chart(ctx_deaths_aligned, config_deaths_aligned);
+
 			})
 			.fail(function() {
 			    alert( "error" );
@@ -299,6 +350,12 @@
 	</div>
 	<div style="width: 85%; margin-top: 1em; margin-bottom: 1em">
 		<canvas id="canvas-deaths"></canvas>
+	</div>
+	<div style="width: 85%; margin-top: 1em; margin-bottom: 1em">
+		<canvas id="canvas-positives-aligned"></canvas>
+	</div>
+	<div style="width: 85%; margin-top: 1em; margin-bottom: 1em">
+		<canvas id="canvas-deaths-aligned"></canvas>
 	</div>
 	<p>
 		Sources: <a href="https://covidtracking.com/">The COVID Tracking Project</a>, <a href="https://www.census.gov/data/datasets/time-series/demo/popest/2010s-state-total.html">Census Bureau: Annual Estimates of the Resident Population for the United States, Regions, States, and Puerto Rico: April 1, 2010 to July 1, 2019 (NST-EST2019-01)</a>
