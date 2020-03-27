@@ -213,26 +213,38 @@ def create_ranked(conn):
                 ,POPESTIMATE2019 as Population
                 ,CAST(Confirmed AS REAL) / (CAST(POPESTIMATE2019 AS REAL) / 1000000) as ConfirmedPer1M
                 ,CAST(Deaths AS REAL) / (CAST(POPESTIMATE2019 AS REAL) / 1000000) as DeathsPer1M
+                ,ROW_NUMBER() OVER (PARTITION BY t1.FIPS ORDER BY Date DESC) As DateRank
             FROM Filtered t1
             LEFT JOIN fips_population t2
                 ON t1.FIPS = t2.FIPS 
         )
-        ,WithMax AS (
+        ,Latest AS (
             SELECT
-                *
-                ,MAX(ConfirmedPer1M) OVER (PARTITION BY FIPS) AS MaxConfirmedPer1M 
-                ,MAX(DeathsPer1M) OVER (PARTITION BY FIPS) AS MaxDeathsPer1M
-            FROM WithPopulation 
+                FIPS
+                ,MAX(ConfirmedPer1M) AS LatestConfirmedPer1M
+                ,MAX(DeathsPer1M) AS LatestDeathsPer1M
+            FROM WithPopulation
+            WHERE DateRank = 1
+            GROUP BY FIPS
+        )
+        ,WithLatest as (
+            SELECT
+                t1.*
+                ,t2.LatestConfirmedPer1M
+                ,t2.LatestDeathsPer1M
+            FROM WithPopulation t1
+            LEFT JOIN Latest t2
+                ON t1.FIPS = t2.FIPS
         )
         ,WithRank AS (
             SELECT
                 FIPS
-                ,MaxConfirmedPer1M
-                ,MaxDeathsPer1M
-                ,ROW_NUMBER() OVER (ORDER BY MaxConfirmedPer1M DESC) As ConfirmedRank
-                ,ROW_NUMBER() OVER (ORDER BY MaxDeathsPer1M DESC) As DeathRank
-            FROM WithMax
-            GROUP BY FIPS, MaxConfirmedPer1M, MaxDeathsPer1M
+                ,LatestConfirmedPer1M
+                ,LatestDeathsPer1M
+                ,ROW_NUMBER() OVER (ORDER BY LatestConfirmedPer1M DESC) As ConfirmedRank
+                ,ROW_NUMBER() OVER (ORDER BY LatestDeathsPer1M DESC) As DeathRank
+            FROM WithLatest
+            GROUP BY FIPS, LatestConfirmedPer1M, LatestDeathsPer1M
         )
         INSERT INTO ranked
         SELECT
@@ -248,7 +260,7 @@ def create_ranked(conn):
             ,DeathsPer1M
             ,ConfirmedRank
             ,DeathRank
-        FROM WithMax t1
+        FROM WithLatest t1
         LEFT JOIN WithRank t2
             ON t1.FIPS = t2.FIPS
         ORDER BY ConfirmedRank
