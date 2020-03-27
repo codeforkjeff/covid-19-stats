@@ -1,11 +1,7 @@
 
 # COVID-19-stats
 
-Charts:
-- Positive Tests Per 1M Population by State
-- Total Cumulative Deaths Per 1M Population by State
-- Positive Tests Per 1M Population by State, Aligned to Start of First Positive Test
-- Total Cumulative Deaths Per 1M Population by State, Aligned to First Death
+Variuous charts for COVID-19 statistics for the United States, adjusted for population size.
 
 To view them, go here:
 
