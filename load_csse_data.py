@@ -166,6 +166,129 @@ def load_county_info(conn):
     c.close()
 
 
+def load_state_info(conn):
+
+    path = "stage/nst-est2019-alldata.csv"
+
+    if not os.path.exists(path):
+        print("Downloading state info into stage dir")
+        with urllib.request.urlopen('http://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-alldata.csv') as f:
+            data = f.read()
+            with open(path, 'wb') as output:
+                output.write(data)
+
+    print("Loading state data into database")
+
+    column_names = []
+
+    with codecs.open(path, encoding='latin1') as f:
+        reader = csv.reader(f)
+        rows = [row for row in reader]
+        column_names = rows[0]
+        rows = rows[1:]
+
+    c = conn.cursor()
+
+    c.execute('''
+        DROP TABLE IF EXISTS nst_population;
+    ''')
+
+    # Create table
+    c.execute('''
+        CREATE TABLE nst_population ('''
+            + ",".join([col + " text" for col in column_names]) +
+        ''')
+    ''')
+
+    c.executemany('INSERT INTO nst_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+
+    conn.commit()
+
+    c.execute('DROP TABLE IF EXISTS state_abbreviations')
+
+    c.execute('CREATE TABLE state_abbreviations ( State text , Abbreviation text )')
+
+    c.execute('''
+        INSERT INTO state_abbreviations
+        SELECT *
+        FROM
+        (
+        VALUES
+            ('Alabama', 'AL'),
+            ('Alaska', 'AK'),
+            ('Arizona', 'AZ'),
+            ('Arkansas', 'AR'),
+            ('California', 'CA'),
+            ('Colorado', 'CO'),
+            ('Connecticut', 'CT'),
+            ('Delaware', 'DE'),
+            ('District of Columbia', 'DC'),
+            ('Florida', 'FL'),
+            ('Georgia', 'GA'),
+            ('Hawaii', 'HI'),
+            ('Idaho', 'ID'),
+            ('Illinois', 'IL'),
+            ('Indiana', 'IN'),
+            ('Iowa', 'IA'),
+            ('Kansas', 'KS'),
+            ('Kentucky', 'KY'),
+            ('Louisiana', 'LA'),
+            ('Maine', 'ME'),
+            ('Maryland', 'MD'),
+            ('Massachusetts', 'MA'),
+            ('Michigan', 'MI'),
+            ('Minnesota', 'MN'),
+            ('Mississippi', 'MS'),
+            ('Missouri', 'MO'),
+            ('Montana', 'MT'),
+            ('Nebraska', 'NE'),
+            ('Nevada', 'NV'),
+            ('New Hampshire', 'NH'),
+            ('New Jersey', 'NJ'),
+            ('New Mexico', 'NM'),
+            ('New York', 'NY'),
+            ('North Carolina', 'NC'),
+            ('North Dakota', 'ND'),
+            ('Ohio', 'OH'),
+            ('Oklahoma', 'OK'),
+            ('Oregon', 'OR'),
+            ('Pennsylvania', 'PA'),
+            ('Rhode Island', 'RI'),
+            ('South Carolina', 'SC'),
+            ('South Dakota', 'SD'),
+            ('Tennessee', 'TN'),
+            ('Texas', 'TX'),
+            ('Utah', 'UT'),
+            ('Vermont', 'VT'),
+            ('Virginia', 'VA'),
+            ('Washington', 'WA'),
+            ('West Virginia', 'WV'),
+            ('Wisconsin', 'WI'),
+            ('Wyoming', 'WY')
+        ) AS t;
+    ''')
+
+    conn.commit()
+
+    c.execute('DROP TABLE IF EXISTS state_population')
+
+    c.execute('''
+        CREATE TABLE state_population
+        AS SELECT
+            NAME AS State
+            ,Abbreviation AS StateAbbrev
+            ,CAST(POPESTIMATE2019 as INT) as Population
+        FROM nst_population t1
+        LEFT JOIN state_abbreviations t2
+            ON t1.NAME = t2.State
+        WHERE CAST(t1.STATE AS INT) > 0
+    ''')
+
+    conn.commit()
+
+    c.close()
+
+
 def create_ranked(conn):
 
     c = conn.cursor()
@@ -307,6 +430,20 @@ def export_ranked(conn):
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
 
+def export_state_info(conn):
+
+    c = conn.cursor()
+
+    c.execute('''
+        SELECT * FROM state_population;
+    ''')
+
+    rows = c.fetchall()
+
+    with codecs.open("data/state_population.json", "w", encoding='utf8') as f:
+        f.write(json.dumps([row_to_dict(row) for row in rows]))
+
+
 conn = sqlite3.connect('stage/covid19.db')
 conn.row_factory = sqlite3.Row
 
@@ -314,5 +451,9 @@ load_csse(conn)
 load_county_info(conn)
 create_ranked(conn)
 export_ranked(conn)
+
+load_state_info(conn)
+export_state_info(conn)
+
 conn.close()
 
