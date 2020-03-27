@@ -146,9 +146,13 @@
             return data.filter(function(record) {
                 return record.state == state && record[field] > 0 && !!record.date;
             }).map(function(record) {
+                var y = record[field] / (pop / 1000000);
+                y = Math.round(y * 10000) / 10000;
                 return {
                     x: record.date,
-                    y: record[field] / (pop / 1000000)
+                    y: y,
+                    count: record[field],
+                    population: pop
                 }
             }).sort(comparator);
         }
@@ -211,7 +215,9 @@
                             if(acc.length == 0) {
                                 acc.push({ x: "Day 000", y: 0});
                             }
-                            acc.push({ x: "Day " + String(acc.length).padStart(3, "0"), y: point.y});
+                            var new_point = copy_object(point);
+                            new_point.x = "Day " + String(acc.length).padStart(3, "0");
+                            acc.push(new_point);
                         }
                         return acc;
                     }, [])
@@ -242,32 +248,51 @@
             };
         }
 
+        function tooltip_count_pop(tooltipItem, data) {
+            var label = data.datasets[tooltipItem.datasetIndex].label || '';
+            var datum = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+            if (label) {
+                label += ': ';
+            }
+            label += tooltipItem.yLabel;
+            label += " (Count: " + datum.count + " / Pop: " + datum.population + ")";
+            return label;
+        }
+
         function copy_object(obj) {
             return JSON.parse(JSON.stringify(obj));
         }
 
         // filter from CSSE by county and transform to objects fit for chartjs
         function get_counties_chart_data(data, field_measure) {
+            var field_count;
             var field_rank;
             if(field_measure == 'ConfirmedPer1M') {
+                field_count = 'Confirmed';
                 field_rank = 'ConfirmedRank';
             } else if(field_measure == 'DeathsPer1M') {
+                field_count = 'Deaths';
                 field_rank = 'DeathRank';
             }
             var data_for_counties = data
                 .filter(record => record[field_rank] <= 30)
                 .map(function(record) {
-                return {
-                    County: record.Admin2 + ', ' + record.Province_State,
-                    x: record.Date,
-                    y: record[field_measure]
-                }
+                    var y = Math.round(record[field_measure] * 10000) / 10000;
+                    return {
+                        County: record.Admin2 + ', ' + record.Province_State,
+                        x: record.Date,
+                        y: y,
+                        count: record[field_count],
+                        population: record.Population
+                    }
             }).sort(comparator)
             .reduce((acc, point) => {
                 if(!acc[point.County]) {
                     acc[point.County] = [];
                 }
-                acc[point.County].push(point);
+                var county = point.County;
+                delete point.County;
+                acc[county].push(point);
                 return acc;
             }, {});
 
@@ -305,7 +330,9 @@
                     },
                     tooltips: {
                         mode: 'point',
-                        intersect: false
+                        intersect: false,
+                        callbacks: {
+                        }
                     },
                     hover: {
                         mode: 'nearest',
@@ -333,13 +360,20 @@
                 }
             };
 
+            function clone_config_template() {
+                var config = copy_object(config_template);
+                // function reference this can't be copied
+                config.options.tooltips.callbacks.label = tooltip_count_pop;
+                return config;
+            }
+
             $.ajax("https://covidtracking.com/api/states/daily").done(function(data) {
 
                 // positives chart
 
                 var chart_data_positives = get_chart_data(data, 'positive');
 
-                var config_positives = copy_object(config_template);
+                var config_positives = clone_config_template();
 
                 config_positives.options.title.text = 'Positive Tests Per 1M Population by State';
                 config_positives.data.labels = chart_data_positives.labels;
@@ -352,7 +386,7 @@
 
                 var chart_data_deaths = get_chart_data(data, 'death');
 
-                var config_deaths = copy_object(config_template);
+                var config_deaths = clone_config_template();
 
                 config_deaths.options.title.text = 'Total Cumulative Deaths Per 1M Population by State';
                 config_deaths.data.labels = chart_data_deaths.labels;
@@ -365,7 +399,7 @@
 
                 var chart_data_positives_aligned = get_chart_data(data, 'positive', true);
 
-                var config_positives_aligned = copy_object(config_template);
+                var config_positives_aligned = clone_config_template();
 
                 config_positives_aligned.options.title.text = 'Positive Tests Per 1M Population by State, Aligned to First Positive Test';
                 config_positives_aligned.data.labels = chart_data_positives_aligned.labels;
@@ -378,7 +412,7 @@
 
                 var chart_data_deaths_aligned = get_chart_data(data, 'death', true);
 
-                var config_deaths_aligned = copy_object(config_template);
+                var config_deaths_aligned = clone_config_template();
 
                 config_deaths_aligned.options.title.text = 'Total Cumulative Deaths Per 1M Population by State, Aligned to First Death';
                 config_deaths_aligned.data.labels = chart_data_deaths_aligned.labels;
@@ -398,7 +432,7 @@
 
                 var chart_data_positives = get_counties_chart_data(data, 'ConfirmedPer1M');
 
-                var config_positives = copy_object(config_template);
+                var config_positives = clone_config_template();
 
                 config_positives.options.title.text = 'Positive Tests Per 1M Population by County, Top 30 Counties (pop >= 25k)';
                 config_positives.data.labels = chart_data_positives.labels;
@@ -411,7 +445,7 @@
 
                 var chart_data_deaths = get_counties_chart_data(data, 'DeathsPer1M');
 
-                var config_deaths = copy_object(config_template);
+                var config_deaths = clone_config_template();
 
                 config_deaths.options.title.text = 'Total Cumulative Deaths Per 1M Population by County, Top 30 Counties (pop >= 25k)';
                 config_deaths.data.labels = chart_data_deaths.labels;
