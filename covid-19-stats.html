@@ -10,8 +10,8 @@
     }
     .canvas-container {
         width: 85%;
-        margin-top: 1em;
-        margin-bottom: 1em
+        margin-top: 2em;
+        margin-bottom: 2em
     }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
@@ -243,48 +243,94 @@
             return JSON.parse(JSON.stringify(obj));
         }
 
+        // filter from CSSE by county and transform to objects fit for chartjs
+        function get_counties_chart_data(data, field_measure) {
+            var field_rank;
+            if(field_measure == 'ConfirmedPer1M') {
+                field_rank = 'ConfirmedRank';
+            } else if(field_measure == 'DeathsPer1M') {
+                field_rank = 'DeathRank';
+            }
+            var data_for_counties = data
+                .filter(record => record[field_rank] <= 30)
+                .map(function(record) {
+                return {
+                    County: record.Admin2 + ', ' + record.Province_State,
+                    x: record.Date,
+                    y: record[field_measure]
+                }
+            }).sort(comparator)
+            .reduce((acc, point) => {
+                if(!acc[point.County]) {
+                    acc[point.County] = [];
+                }
+                acc[point.County].push(point);
+                return acc;
+            }, {});
+
+            var labels = union_labels(Object.values(data_for_counties));
+
+            var chart_data = Object.keys(data_for_counties).map(function(county, idx) {
+                var color = colors[idx];
+                return {
+                    label: county,
+                    backgroundColor: color,
+                    borderColor: color,
+                    data: data_for_counties[county],
+                    fill: false,
+                    lineTension: 0
+                }
+            });
+
+            return {
+                labels: labels,
+                chart_data: chart_data
+            };
+        }
+
         $(document).ready(function() {
 
-            $.ajax("https://covidtracking.com/api/states/daily").done(function(data) {
-                var config_template = {
-                    type: 'line',
-                    data: {
+            var config_template = {
+                type: 'line',
+                data: {
+                },
+                options: {
+                    responsive: true,
+                    title: {
+                        display: true,
+                        fontSize: 20
                     },
-                    options: {
-                        responsive: true,
-                        title: {
+                    tooltips: {
+                        mode: 'point',
+                        intersect: false
+                    },
+                    hover: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    scales: {
+                        xAxes: [{
                             display: true,
-                            fontSize: 20
-                        },
-                        tooltips: {
-                            mode: 'point',
-                            intersect: false
-                        },
-                        hover: {
-                            mode: 'nearest',
-                            intersect: false
-                        },
-                        scales: {
-                            xAxes: [{
+                            scaleLabel: {
                                 display: true,
-                                scaleLabel: {
-                                    display: true,
-                                    labelString: 'Date'
-                                }
-                            }],
-                            yAxes: [{
+                                labelString: 'Date'
+                            }
+                        }],
+                        yAxes: [{
+                            display: true,
+                            scaleLabel: {
                                 display: true,
-                                scaleLabel: {
-                                    display: true,
-                                    labelString: 'Counts Per 1M'
-                                }
-                            }]
-                        },
-                        legend: {
-                            position: 'bottom'
-                        }
+                                labelString: 'Counts Per 1M'
+                            }
+                        }]
+                    },
+                    legend: {
+                        position: 'bottom'
                     }
-                };
+                }
+            };
+
+            $.ajax("https://covidtracking.com/api/states/daily").done(function(data) {
 
                 // positives chart
 
@@ -342,13 +388,68 @@
             .fail(function() {
                 alert( "error" );
             });
-        });
+
+            $.ajax("data/counties_ranked.json?ts=" + Date.now()).done(function(data) {
+
+                // positives chart
+
+                var chart_data_positives = get_counties_chart_data(data, 'ConfirmedPer1M');
+
+                var config_positives = copy_object(config_template);
+
+                config_positives.options.title.text = 'Positive Tests Per 1M Population by County, Top 30 Counties (pop >= 25k)';
+                config_positives.data.labels = chart_data_positives.labels;
+                config_positives.data.datasets = chart_data_positives.chart_data;
+
+                var ctx_positives = document.getElementById('canvas-county-positives').getContext('2d');
+                new Chart(ctx_positives, config_positives);
+
+                // deaths chart
+
+                var chart_data_deaths = get_counties_chart_data(data, 'DeathsPer1M');
+
+                var config_deaths = copy_object(config_template);
+
+                config_deaths.options.title.text = 'Total Cumulative Deaths Per 1M Population by County, Top 30 Counties (pop >= 25k)';
+                config_deaths.data.labels = chart_data_deaths.labels;
+                config_deaths.data.datasets = chart_data_deaths.chart_data;
+
+                var ctx_deaths = document.getElementById('canvas-county-deaths').getContext('2d');
+                new Chart(ctx_deaths, config_deaths);
+
+            })
+            .fail(function() {
+                alert( "error" );
+            });
+
+
+         });
 
     </script>
 
 </head>
 
 <body>
+    <h2>Charts on this page</h2>
+        <ul>
+            <li><a href="#canvas-positives">Positive Tests Per 1M Population by State</a></li>
+            <li><a href="#canvas-deaths">Total Cumulative Deaths Per 1M Population by State</a></li>
+            <li><a href="#canvas-positives-aligned">Positive Tests Per 1M Population by State, Aligned to First Positive Test</a></li>
+            <li><a href="#canvas-deaths-aligned">Total Cumulative Deaths Per 1M Population by State, Aligned to First Death</a></li>
+            <li><a href="#canvas-county-positives">Positive Tests Per 1M Population by County, Top 30 Counties (pop >= 25k)</a></li>
+            <li><a href="#canvas-county-deaths">Total Cumulative Deaths Per 1M Population by County, Top 30 Counties (pop >= 25k)</a></li>
+        </ul>
+    </p>
+
+    <p>Sources:
+        <ul>
+            <li><a href="https://covidtracking.com/">The COVID Tracking Project</a> - state-level data</li> 
+            <li><a href="https://www.census.gov/data/datasets/time-series/demo/popest/2010s-state-total.html">Census Bureau: State Population Totals: 2010-2019</a> - state population totals</li>
+            <li><a href="https://github.com/CSSEGISandData/COVID-19">Novel Coronavirus (COVID-19) Cases, provided by JHU CSSE</a> - county-level data</li>
+            <li><a href="https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html">Census Bureau: County Population Totals: 2010-2019</a> - county population totals</li>
+        </ul>
+    </p>
+
     <div class="canvas-container">
         <canvas id="canvas-positives"></canvas>
     </div>
@@ -361,9 +462,12 @@
     <div class="canvas-container">
         <canvas id="canvas-deaths-aligned"></canvas>
     </div>
-    <p>
-        Sources: <a href="https://covidtracking.com/">The COVID Tracking Project</a>, <a href="https://www.census.gov/data/datasets/time-series/demo/popest/2010s-state-total.html">Census Bureau: Annual Estimates of the Resident Population for the United States, Regions, States, and Puerto Rico: April 1, 2010 to July 1, 2019 (NST-EST2019-01)</a>
-    </p>
+    <div class="canvas-container">
+        <canvas id="canvas-county-positives"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-county-deaths"></canvas>
+    </div>
 
 </body>
 
