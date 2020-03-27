@@ -155,7 +155,7 @@ def load_county_info(conn):
         CREATE TABLE fips_population
         AS SELECT
             STATE || COUNTY AS FIPS,
-            POPESTIMATE2019
+            CAST(POPESTIMATE2019 as INT) as Population
         FROM county_population;
     ''')
 
@@ -210,9 +210,9 @@ def create_ranked(conn):
         ,WithPopulation AS (
             SELECT
                 t1.*
-                ,POPESTIMATE2019 as Population
-                ,CAST(Confirmed AS REAL) / (CAST(POPESTIMATE2019 AS REAL) / 1000000) as ConfirmedPer1M
-                ,CAST(Deaths AS REAL) / (CAST(POPESTIMATE2019 AS REAL) / 1000000) as DeathsPer1M
+                ,Population
+                ,CAST(Confirmed AS REAL) / (CAST(Population AS REAL) / 1000000) as ConfirmedPer1M
+                ,CAST(Deaths AS REAL) / (CAST(Population AS REAL) / 1000000) as DeathsPer1M
                 ,ROW_NUMBER() OVER (PARTITION BY t1.FIPS ORDER BY Date DESC) As DateRank
             FROM Filtered t1
             LEFT JOIN fips_population t2
