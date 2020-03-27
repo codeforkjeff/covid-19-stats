@@ -25,7 +25,7 @@ def load_csse(conn):
 
     # assumes COVID-19 repo has been cloned to home directory
     spec = os.path.join(os.getenv("HOME"), 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
-
+    print(f"Looking for files: {spec}")
     paths = [Path(path, get_sortable_date(path)) for path in glob.glob(spec)]
 
     filtered_paths = [p for p in paths if p.date >= '20200322']
