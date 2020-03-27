@@ -216,6 +216,7 @@
                                 acc.push({ x: "Day 000", y: 0});
                             }
                             var new_point = copy_object(point);
+                            new_point.date = point.x;
                             new_point.x = "Day " + String(acc.length).padStart(3, "0");
                             acc.push(new_point);
                         }
@@ -255,7 +256,10 @@
                 label += ': ';
             }
             label += tooltipItem.yLabel;
-            label += " (Count: " + datum.count + " / Pop: " + datum.population + ")";
+            label += " - Count: " + datum.count + " / Pop: " + datum.population;
+            if(datum.date) {
+                label += " on " + datum.date;
+            }
             return label;
         }
 
