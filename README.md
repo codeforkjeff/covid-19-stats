@@ -1,7 +1,7 @@
 
 # COVID-19-stats
 
-Variuous charts for COVID-19 statistics for the United States, adjusted for population size.
+Various charts for COVID-19 statistics for the United States, adjusted for population size.
 
 To view them, go here:
 
