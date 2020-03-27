@@ -430,7 +430,7 @@
                 alert( "error" );
             });
 
-            $.ajax("data/counties_ranked.json?ts=" + Date.now()).done(function(data) {
+            $.ajax("data/counties_ranked.json?", { cache: false }).done(function(data) {
 
                 // positives chart
 
