@@ -297,7 +297,7 @@
                             display: true,
                             scaleLabel: {
                                 display: true,
-                                labelString: 'Counts Per 1M'
+                                labelString: 'Counts Per 1M Pop.'
                             }
                         }]
                     },
@@ -341,7 +341,7 @@
 
                 var config_positives = clone_config_template();
 
-                config_positives.options.title.text = 'Positive Tests Per 1M Population by State';
+                config_positives.options.title.text = 'Confirmed Tests by State';
                 config_positives.data.labels = chart_data_positives.labels;
                 config_positives.data.datasets = chart_data_positives.chart_data;
 
@@ -354,7 +354,7 @@
 
                 var config_deaths = clone_config_template();
 
-                config_deaths.options.title.text = 'Total Cumulative Deaths Per 1M Population by State';
+                config_deaths.options.title.text = 'Total Cumulative Deaths by State';
                 config_deaths.data.labels = chart_data_deaths.labels;
                 config_deaths.data.datasets = chart_data_deaths.chart_data;
 
@@ -367,7 +367,7 @@
 
                 var config_positives_aligned = clone_config_template();
 
-                config_positives_aligned.options.title.text = 'Positive Tests Per 1M Population by State, Aligned to First Positive Test';
+                config_positives_aligned.options.title.text = 'Confirmed Tests by State, Aligned to First Positive Test';
                 config_positives_aligned.data.labels = chart_data_positives_aligned.labels;
                 config_positives_aligned.data.datasets = chart_data_positives_aligned.chart_data;
 
@@ -380,7 +380,7 @@
 
                 var config_deaths_aligned = clone_config_template();
 
-                config_deaths_aligned.options.title.text = 'Total Cumulative Deaths Per 1M Population by State, Aligned to First Death';
+                config_deaths_aligned.options.title.text = 'Total Cumulative Deaths by State, Aligned to First Death';
                 config_deaths_aligned.data.labels = chart_data_deaths_aligned.labels;
                 config_deaths_aligned.data.datasets = chart_data_deaths_aligned.chart_data;
 
@@ -397,7 +397,7 @@
 
                 var config_positives = clone_config_template();
 
-                config_positives.options.title.text = 'Positive Tests Per 1M Population by County, Top 30 Counties (pop >= 25k)';
+                config_positives.options.title.text = 'Confirmed Tests by County, Top 30 Counties (pop >= 25k)';
                 config_positives.data.labels = chart_data_positives.labels;
                 config_positives.data.datasets = chart_data_positives.chart_data;
 
@@ -410,7 +410,7 @@
 
                 var config_deaths = clone_config_template();
 
-                config_deaths.options.title.text = 'Total Cumulative Deaths Per 1M Population by County, Top 30 Counties (pop >= 25k)';
+                config_deaths.options.title.text = 'Total Cumulative Deaths by County, Top 30 Counties (pop >= 25k)';
                 config_deaths.data.labels = chart_data_deaths.labels;
                 config_deaths.data.datasets = chart_data_deaths.chart_data;
 
@@ -430,13 +430,19 @@
 
 <body>
     <h2>Charts on this page</h2>
+        <p>All counts are adjusted for population size (per 1M).
         <ul>
-            <li><a href="#canvas-positives">Positive Tests Per 1M Population by State</a></li>
-            <li><a href="#canvas-deaths">Total Cumulative Deaths Per 1M Population by State</a></li>
-            <li><a href="#canvas-positives-aligned">Positive Tests Per 1M Population by State, Aligned to First Positive Test</a></li>
-            <li><a href="#canvas-deaths-aligned">Total Cumulative Deaths Per 1M Population by State, Aligned to First Death</a></li>
-            <li><a href="#canvas-county-positives">Positive Tests Per 1M Population by County, Top 30 Counties (pop >= 25k)</a></li>
-            <li><a href="#canvas-county-deaths">Total Cumulative Deaths Per 1M Population by County, Top 30 Counties (pop >= 25k)</a></li>
+            <li><a href="#canvas-positives">Confirmed Tests by State</a></li>
+            <li><a href="#canvas-deaths">Total Cumulative Deaths by State</a></li>
+            <li><a href="#canvas-positives-aligned">Confirmed Tests by State, Aligned to First Positive Test</a></li>
+            <li><a href="#canvas-deaths-aligned">Total Cumulative Deaths by State, Aligned to First Death</a></li>
+            <li><a href="#canvas-county-positives">Confirmed Tests by County, Top 30 Counties (pop >= 25k)</a></li>
+            <li><a href="#canvas-county-deaths">Total Cumulative Deaths by County, Top 30 Counties (pop >= 25k)</a></li>
+        </ul>
+
+    <p>Notes:
+        <ul>
+            <li>Click labels in the legend to toggle a line off and on; this will rescale the vertical axis as well.</li>
         </ul>
 
     <p>Sources:
