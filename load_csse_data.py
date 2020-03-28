@@ -289,20 +289,21 @@ def load_state_info(conn):
     c.close()
 
 
-def create_ranked(conn):
+def create_counties_ranked(conn):
 
     c = conn.cursor()
 
     c.execute('''
-        DROP TABLE IF EXISTS ranked;
+        DROP TABLE IF EXISTS counties_ranked;
     ''')
 
     c.execute('''
-        CREATE TABLE ranked (
+        CREATE TABLE counties_ranked (
             Date text,
             FIPS text,
             Admin2 text,
             Province_State text,
+            StateAbbrev text,
             Country_Region text,
             Confirmed int,
             Deaths int,
@@ -372,12 +373,13 @@ def create_ranked(conn):
             FROM WithLatest
             GROUP BY FIPS, LatestConfirmedPer1M, LatestDeathsPer1M
         )
-        INSERT INTO ranked
+        INSERT INTO counties_ranked
         SELECT
             Date
             ,t1.FIPS
             ,Admin2
             ,Province_State
+            ,Abbreviation as StateAbbrev
             ,Country_Region
             ,Confirmed
             ,Deaths
@@ -389,6 +391,8 @@ def create_ranked(conn):
         FROM WithLatest t1
         LEFT JOIN WithRank t2
             ON t1.FIPS = t2.FIPS
+        LEFT JOIN state_abbreviations t3
+            ON t1.Province_State = t3.State
         ORDER BY ConfirmedRank
     ''')
 
@@ -404,12 +408,12 @@ def row_to_dict(row):
     return d
 
 
-def export_ranked(conn):
+def export_counties_ranked(conn):
 
     c = conn.cursor()
 
     c.execute('''
-        SELECT * FROM ranked;
+        SELECT * FROM counties_ranked;
     ''')
 
     rows = c.fetchall()
@@ -449,8 +453,8 @@ conn.row_factory = sqlite3.Row
 
 load_csse(conn)
 load_county_info(conn)
-create_ranked(conn)
-export_ranked(conn)
+create_counties_ranked(conn)
+export_counties_ranked(conn)
 
 load_state_info(conn)
 export_state_info(conn)

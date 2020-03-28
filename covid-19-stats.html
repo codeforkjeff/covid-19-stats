@@ -226,7 +226,7 @@
                 .map(function(record) {
                     var y = Math.round(record[field_measure] * 10000) / 10000;
                     return {
-                        County: record.Admin2 + ', ' + record.Province_State,
+                        County: record.Admin2 + ', ' + record.StateAbbrev,
                         x: record.Date,
                         y: y,
                         count: record[field_count],
