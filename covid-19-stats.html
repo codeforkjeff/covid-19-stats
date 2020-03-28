@@ -82,22 +82,14 @@
             return a.x < b.x ? -1 : (a.x > b.x ? 1 : 0);
         }
 
-        // filter data from COVID tracking by state and transform to objects fit for chartjs
-        function get_state(data, state, field) {
-            var pop = parseFloat(states[state].Population);
-
-            return data.filter(function(record) {
-                return record.state == state && record[field] > 0 && !!record.date;
-            }).map(function(record) {
-                var y = record[field] / (pop / 1000000);
-                y = Math.round(y * 10000) / 10000;
-                return {
-                    x: record.date,
-                    y: y,
-                    count: record[field],
-                    population: pop
-                }
-            }).sort(comparator);
+        // YYYYMMDD -> date obj. arg can be a string or int
+        function datevalue_to_date(date_value) {
+            var datestr = String(date_value);
+            return new Date(
+                parseInt(datestr.substring(0, 4)),
+                parseInt(datestr.substring(4, 6)) -1,
+                parseInt(datestr.substring(6, 8))
+            )
         }
 
         // get the labels (unique X values) from a dataset
@@ -105,14 +97,25 @@
             return dataset.map((point) => point.x);
         }
 
+        // datasets is an array of arrays. handles dates properly.
         function union_labels(datasets) {
-            var s = new Set()
+            var s = new Set();
+            var is_dates = false;
             datasets.forEach(function(dataset) {
                 get_labels(dataset).forEach(function(label) {
-                    s.add(label);
+                    var v = label;
+                    if(label instanceof Date) {
+                        is_dates = true;
+                        v = label.getTime();
+                    }
+                    s.add(v);
                 });
             });
-            return Array.from(s).sort();
+            var sorted = Array.from(s).sort();
+            if(is_dates) {
+                sorted = sorted.map(v => new Date(v));
+            }
+            return sorted;
         }
 
         // set difference A - B
@@ -128,25 +131,58 @@
         // chartjs doesn't display tooltips correctly unless we do this
         function zero_fill(dataset, labels) {
             var existing = get_labels(dataset);
-            var missing = difference(new Set(labels), new Set(existing))
-            missing.forEach(function(missing_label) {
-                dataset.push({ x: missing_label, y: 0 })
+
+            var is_date = labels.some(v => v instanceof Date);
+
+            var a = labels.map(v => is_date ? v.getTime() : v);
+            var b = existing.map(v => is_date ? v.getTime() : v);
+
+            var missing = difference(new Set(a), new Set(b))
+            missing.forEach(function(v) {
+                if(is_date) {
+                    v = new Date(v)
+                }
+                dataset.push({ x: v, y: 0 })
             });
             dataset.sort(comparator);
         }
 
         // data for a chart
-        function get_chart_data(data, field, align_start = false) {
-            var states_to_display = Object.keys(states);
+        function get_states_chart_data(data, field, align_start = false) {
 
-            var data_for_states = states_to_display
-                .reduce((acc, state) => {
-                    var state_data = get_state(data, state, field);
-                    if(state_data.some(point => point.y > 0)) {
-                        acc[state] = state_data;
+            var data_for_states_all = data
+                .reduce((acc, record) => {
+                    var state = record.state;
+                    if(state in states) {
+                        var pop = parseFloat(states[state].Population);
+                        if(record[field] > 0 && !!record.date) {
+                            if (!acc[state]) {
+                                acc[state] = [];
+                            }
+                            var y = record[field] / (pop / 1000000);
+                            y = Math.round(y * 10000) / 10000;
+                            acc[state].push({
+                                x: datevalue_to_date(record.date),
+                                y: y,
+                                count: record[field],
+                                population: pop
+                            });
+                        }
                     }
                     return acc;
-                }, {})
+                }, {});
+
+            var data_for_states = {};
+
+            // filter out states that have all 0 y values
+            Object.keys(data_for_states_all).forEach(state => {
+                var keep = data_for_states_all[state].some(point => point.y > 0);
+                if(keep) {
+                    data_for_states[state] = data_for_states_all[state];
+                }
+            });
+
+            Object.values(data_for_states).forEach(v => v.sort(comparator));
 
             if(align_start) {
                 Object.keys(data_for_states).forEach((state) => {
@@ -174,7 +210,7 @@
                 Object.values(data_for_states).forEach(dataset => zero_fill(dataset, labels));
             }
  
-            var chart_data = Object.keys(data_for_states).map(function(state, idx) {
+            var chart_data = Object.keys(data_for_states).sort().map(function(state, idx) {
                 var color = states[state].color;
                 return {
                     label: state,
@@ -201,9 +237,14 @@
             label += tooltipItem.yLabel;
             label += " - Count: " + datum.count + " / Pop: " + datum.population;
             if(datum.date) {
-                label += " on " + datum.date;
+                label += " on " + datum.date.toDateString();
             }
             return label;
+        }
+
+        function tooltip_title(items, data) {
+            var title = items[0].xLabel;
+            return title.substring(0, 12);
         }
 
         function copy_object(obj) {
@@ -227,7 +268,7 @@
                     var y = Math.round(record[field_measure] * 10000) / 10000;
                     return {
                         County: record.Admin2 + ', ' + record.StateAbbrev,
-                        x: record.Date,
+                        x: datevalue_to_date(record.Date),
                         y: y,
                         count: record[field_count],
                         population: record.Population
@@ -286,13 +327,6 @@
                         intersect: false
                     },
                     scales: {
-                        xAxes: [{
-                            display: true,
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Date'
-                            }
-                        }],
                         yAxes: [{
                             display: true,
                             scaleLabel: {
@@ -311,7 +345,33 @@
                 var config = copy_object(config_template);
                 // function reference this can't be copied
                 config.options.tooltips.callbacks.label = tooltip_count_pop;
+                config.options.tooltips.callbacks.title = tooltip_title;
                 return config;
+            }
+
+            function config_xaxis_date(config) {
+                config.options.scales.xAxes =  [{
+                    display: true,
+                    type: 'time',
+                    time: {
+                        unit: 'day'
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Date'
+                    }
+                }];
+            }
+
+            function config_xaxis_daycount(config) {
+                config.options.scales.xAxes =  [{
+                    display: true,
+                    type: 'category',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Day'
+                    }
+                }];
             }
 
             var covidtracking_data;
@@ -337,9 +397,10 @@
 
                 // positives chart
 
-                var chart_data_positives = get_chart_data(data, 'positive');
+                var chart_data_positives = get_states_chart_data(data, 'positive');
 
                 var config_positives = clone_config_template();
+                config_xaxis_date(config_positives);
 
                 config_positives.options.title.text = 'Confirmed Tests by State';
                 config_positives.data.labels = chart_data_positives.labels;
@@ -350,9 +411,10 @@
 
                 // deaths chart
 
-                var chart_data_deaths = get_chart_data(data, 'death');
+                var chart_data_deaths = get_states_chart_data(data, 'death');
 
                 var config_deaths = clone_config_template();
+                config_xaxis_date(config_deaths);
 
                 config_deaths.options.title.text = 'Total Cumulative Deaths by State';
                 config_deaths.data.labels = chart_data_deaths.labels;
@@ -363,9 +425,10 @@
 
                 // positives chart, aligned
 
-                var chart_data_positives_aligned = get_chart_data(data, 'positive', true);
+                var chart_data_positives_aligned = get_states_chart_data(data, 'positive', true);
 
                 var config_positives_aligned = clone_config_template();
+                config_xaxis_daycount(config_positives_aligned);
 
                 config_positives_aligned.options.title.text = 'Confirmed Tests by State, Aligned to First Positive Test';
                 config_positives_aligned.data.labels = chart_data_positives_aligned.labels;
@@ -376,9 +439,10 @@
 
                 // deaths chart
 
-                var chart_data_deaths_aligned = get_chart_data(data, 'death', true);
+                var chart_data_deaths_aligned = get_states_chart_data(data, 'death', true);
 
                 var config_deaths_aligned = clone_config_template();
+                config_xaxis_daycount(config_deaths_aligned);
 
                 config_deaths_aligned.options.title.text = 'Total Cumulative Deaths by State, Aligned to First Death';
                 config_deaths_aligned.data.labels = chart_data_deaths_aligned.labels;
@@ -396,6 +460,7 @@
                 var chart_data_positives = get_counties_chart_data(data, 'ConfirmedPer1M');
 
                 var config_positives = clone_config_template();
+                config_xaxis_date(config_positives);
 
                 config_positives.options.title.text = 'Confirmed Tests by County, Top 30 Counties (pop >= 25k)';
                 config_positives.data.labels = chart_data_positives.labels;
@@ -409,6 +474,7 @@
                 var chart_data_deaths = get_counties_chart_data(data, 'DeathsPer1M');
 
                 var config_deaths = clone_config_template();
+                config_xaxis_date(config_deaths);
 
                 config_deaths.options.title.text = 'Total Cumulative Deaths by County, Top 30 Counties (pop >= 25k)';
                 config_deaths.data.labels = chart_data_deaths.labels;
