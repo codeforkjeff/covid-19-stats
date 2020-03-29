@@ -207,7 +207,7 @@
                     .reduce((acc, point, idx) => {
                         if(point.y > 0) {
                             if(acc.length == 0) {
-                                acc.push({ x: "Day 000", y: 0});
+                                acc.push({ x: "Day 000", y: 0, count: 0, population: point.population });
                             }
                             var new_point = copy_object(point);
                             new_point.date = point.x;
@@ -254,7 +254,7 @@
                 label += ': ';
             }
             label += tooltipItem.yLabel;
-            label += " - Count: " + datum.count + " / Pop: " + datum.population;
+            label += " - Count: " + Number(datum.count).toLocaleString() + " / Pop: " + Number(datum.population).toLocaleString();
             if(datum.date) {
                 label += " on " + datum.date.toDateString();
             }
@@ -362,6 +362,8 @@
                     tooltips: {
                         mode: 'point',
                         intersect: false,
+                        titleFontSize: 16,
+                        bodyFontSize: 14,
                         callbacks: {
                         }
                     },
