@@ -440,19 +440,19 @@
 
                 var data = covidtracking_data;
 
-                // positives chart
+                // confirmed chart
 
-                var chart_data_positives = get_states_chart_data(data, 'positive');
+                var chart_data_confirmed = get_states_chart_data(data, 'positive');
 
-                var config_positives = clone_config_template();
-                config_xaxis_date(config_positives);
+                var config_confirmed = clone_config_template();
+                config_xaxis_date(config_confirmed);
 
-                config_positives.options.title.text = 'Confirmed Tests by State';
-                config_positives.data.labels = chart_data_positives.labels;
-                config_positives.data.datasets = chart_data_positives.chart_data;
+                config_confirmed.options.title.text = 'Confirmed Tests by State';
+                config_confirmed.data.labels = chart_data_confirmed.labels;
+                config_confirmed.data.datasets = chart_data_confirmed.chart_data;
 
-                var ctx_positives = document.getElementById('canvas-positives').getContext('2d');
-                new Chart(ctx_positives, config_positives);
+                var ctx_confirmed = document.getElementById('canvas-confirmed').getContext('2d');
+                new Chart(ctx_confirmed, config_confirmed);
 
                 // deaths chart
 
@@ -468,19 +468,19 @@
                 var ctx_deaths = document.getElementById('canvas-deaths').getContext('2d');
                 new Chart(ctx_deaths, config_deaths);
 
-                // positives chart, aligned
+                // confirmed chart, aligned
 
-                var chart_data_positives_aligned = get_states_chart_data(data, 'positive', true);
+                var chart_data_confirmed_aligned = get_states_chart_data(data, 'positive', true);
 
-                var config_positives_aligned = clone_config_template();
-                config_xaxis_daycount(config_positives_aligned);
+                var config_confirmed_aligned = clone_config_template();
+                config_xaxis_daycount(config_confirmed_aligned);
 
-                config_positives_aligned.options.title.text = 'Confirmed Tests by State, Aligned to First Positive Test';
-                config_positives_aligned.data.labels = chart_data_positives_aligned.labels;
-                config_positives_aligned.data.datasets = chart_data_positives_aligned.chart_data;
+                config_confirmed_aligned.options.title.text = 'Confirmed Tests by State, Aligned to First Confirmed Test';
+                config_confirmed_aligned.data.labels = chart_data_confirmed_aligned.labels;
+                config_confirmed_aligned.data.datasets = chart_data_confirmed_aligned.chart_data;
 
-                var ctx_positives_aligned = document.getElementById('canvas-positives-aligned').getContext('2d');
-                new Chart(ctx_positives_aligned, config_positives_aligned);
+                var ctx_confirmed_aligned = document.getElementById('canvas-confirmed-aligned').getContext('2d');
+                new Chart(ctx_confirmed_aligned, config_confirmed_aligned);
 
                 // deaths chart
 
@@ -500,19 +500,19 @@
 
             $.ajax("data/counties_ranked.json?", { cache: false }).done(function(data) {
 
-                // positives chart
+                // confirmed chart
 
-                var chart_data_positives = get_counties_chart_data(data, 'ConfirmedPer1M');
+                var chart_data_confirmed = get_counties_chart_data(data, 'ConfirmedPer1M');
 
-                var config_positives = clone_config_template();
-                config_xaxis_date(config_positives);
+                var config_confirmed = clone_config_template();
+                config_xaxis_date(config_confirmed);
 
-                config_positives.options.title.text = 'Confirmed Tests by County, Top 30 Counties (pop >= 25k)';
-                config_positives.data.labels = chart_data_positives.labels;
-                config_positives.data.datasets = chart_data_positives.chart_data;
+                config_confirmed.options.title.text = 'Confirmed Tests by County, Top 30 Counties (pop >= 25k)';
+                config_confirmed.data.labels = chart_data_confirmed.labels;
+                config_confirmed.data.datasets = chart_data_confirmed.chart_data;
 
-                var ctx_positives = document.getElementById('canvas-county-positives').getContext('2d');
-                new Chart(ctx_positives, config_positives);
+                var ctx_confirmed = document.getElementById('canvas-county-confirmed').getContext('2d');
+                new Chart(ctx_confirmed, config_confirmed);
 
                 // deaths chart
 
@@ -543,11 +543,11 @@
     <h2>Charts on this page</h2>
         <p>All counts are adjusted for population size (per 1M).
         <ul>
-            <li><a href="#canvas-positives">Confirmed Tests by State</a></li>
+            <li><a href="#canvas-confirmed">Confirmed Tests by State</a></li>
             <li><a href="#canvas-deaths">Total Cumulative Deaths by State</a></li>
-            <li><a href="#canvas-positives-aligned">Confirmed Tests by State, Aligned to First Positive Test</a></li>
+            <li><a href="#canvas-confirmed-aligned">Confirmed Tests by State, Aligned to First Confirmed Test</a></li>
             <li><a href="#canvas-deaths-aligned">Total Cumulative Deaths by State, Aligned to First Death</a></li>
-            <li><a href="#canvas-county-positives">Confirmed Tests by County, Top 30 Counties (pop >= 25k)</a></li>
+            <li><a href="#canvas-county-confirmed">Confirmed Tests by County, Top 30 Counties (pop >= 25k)</a></li>
             <li><a href="#canvas-county-deaths">Total Cumulative Deaths by County, Top 30 Counties (pop >= 25k)</a></li>
         </ul>
 
@@ -566,19 +566,19 @@
         </ul>
 
     <div class="canvas-container">
-        <canvas id="canvas-positives"></canvas>
+        <canvas id="canvas-confirmed"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-deaths"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-positives-aligned"></canvas>
+        <canvas id="canvas-confirmed-aligned"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-deaths-aligned"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-county-positives"></canvas>
+        <canvas id="canvas-county-confirmed"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-county-deaths"></canvas>
