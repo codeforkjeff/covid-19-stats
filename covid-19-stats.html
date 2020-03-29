@@ -147,6 +147,21 @@
             dataset.sort(comparator);
         }
 
+        function get_states_sorted_by_last_value(data_for_states) {
+            return Object.keys(data_for_states)
+                .map(state => {
+                    var points = data_for_states[state];
+                    var last_value = points[points.length - 1];
+                    return {
+                        state: state,
+                        last_value: last_value.y
+                    };
+                })
+                .sort((a,b) => a.last_value < b.last_value ? -1 : (a.last_value > b.last_value ? 1 : 0))
+                .reverse()
+                .map(record => record.state);
+        }
+
         // data for a chart
         function get_states_chart_data(data, field, align_start = false) {
 
@@ -210,7 +225,11 @@
                 Object.values(data_for_states).forEach(dataset => zero_fill(dataset, labels));
             }
  
-            var chart_data = Object.keys(data_for_states).sort().map(function(state, idx) {
+            // sort to make it easier to navigate "down" the chart legend to
+            // toggle the highest counts on/off
+            var states_sorted = get_states_sorted_by_last_value(data_for_states);
+
+            var chart_data = states_sorted.map(function(state, idx) {
                 var color = states[state].color;
                 return {
                     label: state,
@@ -533,6 +552,7 @@
     <p>Notes:
         <ul>
             <li>Click labels in the legend to toggle a line off and on; this will rescale the vertical axis as well.</li>
+            <li>The legend is sorted to make it easier to go down the list and toggle off the top lines, so you can better see others.</li>
         </ul>
 
     <p>Sources:
