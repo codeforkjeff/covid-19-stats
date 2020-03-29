@@ -262,12 +262,34 @@
                 field_count = 'Deaths';
                 field_rank = 'DeathRank';
             }
-            var data_for_counties = data
+
+            var filtered = data
                 .filter(record => record[field_rank] <= 30)
+                .map(record => {
+                    record.county = record.Admin2 + ', ' + record.StateAbbrev;
+                    return record;
+                });
+
+            // order counties to make it easier to navigate "down" the chart legend to
+            // toggle the highest counts on/off
+            var counties_sorted = Object.values(
+                filtered
+                .reduce((acc, record) => {
+                    acc[record.county] = {
+                        county: record.county,
+                        rank: record[field_rank]
+                    };
+                    return acc;
+                }, {})
+                )
+                .sort((a,b) => a.rank < b.rank ? -1 : (a.rank > b.rank ? 1 : 0))
+                .map(record => record.county);
+
+            var data_for_counties = filtered
                 .map(function(record) {
                     var y = Math.round(record[field_measure] * 10000) / 10000;
                     return {
-                        County: record.Admin2 + ', ' + record.StateAbbrev,
+                        county: record.county,
                         x: datevalue_to_date(record.Date),
                         y: y,
                         count: record[field_count],
@@ -275,18 +297,18 @@
                     }
             }).sort(comparator)
             .reduce((acc, point) => {
-                if(!acc[point.County]) {
-                    acc[point.County] = [];
+                if(!acc[point.county]) {
+                    acc[point.county] = [];
                 }
-                var county = point.County;
-                delete point.County;
+                var county = point.county;
+                delete point.county;
                 acc[county].push(point);
                 return acc;
             }, {});
 
             var labels = union_labels(Object.values(data_for_counties));
 
-            var chart_data = Object.keys(data_for_counties).map(function(county, idx) {
+            var chart_data = counties_sorted.map(function(county, idx) {
                 var color = colors[idx];
                 return {
                     label: county,
