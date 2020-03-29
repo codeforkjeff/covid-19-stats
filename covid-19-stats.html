@@ -295,16 +295,18 @@
                         count: record[field_count],
                         population: record.Population
                     }
-            }).sort(comparator)
-            .reduce((acc, point) => {
-                if(!acc[point.county]) {
-                    acc[point.county] = [];
-                }
-                var county = point.county;
-                delete point.county;
-                acc[county].push(point);
-                return acc;
-            }, {});
+                })
+                .reduce((acc, point) => {
+                    if(!acc[point.county]) {
+                        acc[point.county] = [];
+                    }
+                    var county = point.county;
+                    delete point.county;
+                    acc[county].push(point);
+                    return acc;
+                }, {});
+
+            Object.values(data_for_counties).forEach(v => v.sort(comparator));
 
             var labels = union_labels(Object.values(data_for_counties));
 
