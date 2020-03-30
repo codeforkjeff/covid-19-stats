@@ -271,7 +271,7 @@
         }
 
         // filter from CSSE by county and transform to objects fit for chartjs
-        function get_counties_chart_data(data, field_measure) {
+        function get_counties_chart_data(data, field_measure, population_filter) {
             var field_count;
             var field_rank;
             if(field_measure == 'ConfirmedPer1M') {
@@ -283,7 +283,7 @@
             }
 
             var filtered = data
-                .filter(record => record[field_rank] <= 30)
+                .filter(record => population_filter(record.Population))
                 .map(record => {
                     record.county = record.Admin2 + ', ' + record.StateAbbrev;
                     return record;
@@ -302,7 +302,9 @@
                 }, {})
                 )
                 .sort((a,b) => a.rank < b.rank ? -1 : (a.rank > b.rank ? 1 : 0))
-                .map(record => record.county);
+                .map(record => record.county)
+                // take top 30
+                .slice(0, 30);
 
             var data_for_counties = filtered
                 .map(function(record) {
@@ -447,7 +449,7 @@
                 var config_confirmed = clone_config_template();
                 config_xaxis_date(config_confirmed);
 
-                config_confirmed.options.title.text = 'Confirmed Tests by State';
+                config_confirmed.options.title.text = 'By State: Confirmed Tests';
                 config_confirmed.data.labels = chart_data_confirmed.labels;
                 config_confirmed.data.datasets = chart_data_confirmed.chart_data;
 
@@ -461,7 +463,7 @@
                 var config_deaths = clone_config_template();
                 config_xaxis_date(config_deaths);
 
-                config_deaths.options.title.text = 'Total Cumulative Deaths by State';
+                config_deaths.options.title.text = 'By State: Total Cumulative Deaths';
                 config_deaths.data.labels = chart_data_deaths.labels;
                 config_deaths.data.datasets = chart_data_deaths.chart_data;
 
@@ -475,7 +477,7 @@
                 var config_confirmed_aligned = clone_config_template();
                 config_xaxis_daycount(config_confirmed_aligned);
 
-                config_confirmed_aligned.options.title.text = 'Confirmed Tests by State, Aligned to First Confirmed Test';
+                config_confirmed_aligned.options.title.text = 'By State: Confirmed Tests, Aligned to First Confirmed Test';
                 config_confirmed_aligned.data.labels = chart_data_confirmed_aligned.labels;
                 config_confirmed_aligned.data.datasets = chart_data_confirmed_aligned.chart_data;
 
@@ -489,7 +491,7 @@
                 var config_deaths_aligned = clone_config_template();
                 config_xaxis_daycount(config_deaths_aligned);
 
-                config_deaths_aligned.options.title.text = 'Total Cumulative Deaths by State, Aligned to First Death';
+                config_deaths_aligned.options.title.text = 'By State: Total Cumulative Deaths, Aligned to First Death';
                 config_deaths_aligned.data.labels = chart_data_deaths_aligned.labels;
                 config_deaths_aligned.data.datasets = chart_data_deaths_aligned.chart_data;
 
@@ -500,33 +502,92 @@
 
             $.ajax("data/counties_ranked.json?", { cache: false }).done(function(data) {
 
-                // confirmed chart
+                function draw_chart_county(title, field_measure, population_filter, element_id) {
+                    var chart_data = get_counties_chart_data(data, field_measure, population_filter);
 
-                var chart_data_confirmed = get_counties_chart_data(data, 'ConfirmedPer1M');
+                    var config = clone_config_template();
+                    config_xaxis_date(config);
 
-                var config_confirmed = clone_config_template();
-                config_xaxis_date(config_confirmed);
+                    config.options.title.text = title;
+                    config.data.labels = chart_data.labels;
+                    config.data.datasets = chart_data.chart_data;
 
-                config_confirmed.options.title.text = 'Confirmed Tests by County, Top 30 Counties (pop >= 25k)';
-                config_confirmed.data.labels = chart_data_confirmed.labels;
-                config_confirmed.data.datasets = chart_data_confirmed.chart_data;
+                    var ctx = document.getElementById(element_id).getContext('2d');
+                    new Chart(ctx, config);
+                }
 
-                var ctx_confirmed = document.getElementById('canvas-county-confirmed').getContext('2d');
-                new Chart(ctx_confirmed, config_confirmed);
+                /*
 
-                // deaths chart
+                // thresholds for county size determined by evenly distributing counties into 3 sizes (i.e. using ntiles)
 
-                var chart_data_deaths = get_counties_chart_data(data, 'DeathsPer1M');
+                with pop as (
+                    select distinct
+                        FIPS, Population
+                    FROM counties_ranked
+                )
+                ,WithNTiles as (
+                    select
+                        *
+                        ,ntile(3) over (order by population) as GroupSize
+                    from pop
+                )
+                select
+                    GroupSize,
+                    min(population),
+                    max(population),
+                    count(*)
+                from WithNTiles
+                group by GroupSize
+                */
 
-                var config_deaths = clone_config_template();
-                config_xaxis_date(config_deaths);
+                // small
 
-                config_deaths.options.title.text = 'Total Cumulative Deaths by County, Top 30 Counties (pop >= 25k)';
-                config_deaths.data.labels = chart_data_deaths.labels;
-                config_deaths.data.datasets = chart_data_deaths.chart_data;
+                draw_chart_county(
+                    'By Small County (pop < 30k): Confirmed Tests, Top 30 Counties',
+                    'ConfirmedPer1M',
+                    pop => pop < 30000,
+                    'canvas-county-sm-confirmed'
+                );
 
-                var ctx_deaths = document.getElementById('canvas-county-deaths').getContext('2d');
-                new Chart(ctx_deaths, config_deaths);
+                draw_chart_county(
+                    'By Small County (pop < 30k): Total Cumulative Deaths, Top 30 Counties',
+                    'DeathsPer1M',
+                    pop => pop < 30000,
+                    'canvas-county-sm-deaths'
+                );
+
+                // medium
+
+                draw_chart_county(
+                    'By Med-Sized County (pop 30k-90k): Confirmed Tests, Top 30 Counties',
+                    'ConfirmedPer1M',
+                    pop => pop >= 30000 && pop <= 90000,
+                    'canvas-county-md-confirmed'
+                );
+
+                draw_chart_county(
+                    'By Med-Sized County (pop 30k-90k): Total Cumulative Deaths, Top 30 Counties',
+                    'DeathsPer1M',
+                    pop => pop >= 30000 && pop <= 90000,
+                    'canvas-county-md-deaths'
+                );
+
+                // large
+
+                draw_chart_county(
+                    'By Large County (pop >= 90k): Confirmed Tests, Top 30 Counties',
+                    'ConfirmedPer1M',
+                    pop => pop >= 90000,
+                    'canvas-county-lg-confirmed'
+                );
+
+                draw_chart_county(
+                    'By Large County (pop >= 90k): Total Cumulative Deaths, Top 30 Counties',
+                    'DeathsPer1M',
+                    pop => pop >= 90000,
+                    'canvas-county-lg-deaths'
+                );
+
 
             })
             .fail(function() {
@@ -542,13 +603,23 @@
 <body>
     <h2>Charts on this page</h2>
         <p>All counts are adjusted for population size (per 1M).
+
+    <p>Charts by state:
         <ul>
-            <li><a href="#canvas-confirmed">Confirmed Tests by State</a></li>
-            <li><a href="#canvas-deaths">Total Cumulative Deaths by State</a></li>
-            <li><a href="#canvas-confirmed-aligned">Confirmed Tests by State, Aligned to First Confirmed Test</a></li>
-            <li><a href="#canvas-deaths-aligned">Total Cumulative Deaths by State, Aligned to First Death</a></li>
-            <li><a href="#canvas-county-confirmed">Confirmed Tests by County, Top 30 Counties (pop >= 25k)</a></li>
-            <li><a href="#canvas-county-deaths">Total Cumulative Deaths by County, Top 30 Counties (pop >= 25k)</a></li>
+            <li><a href="#canvas-confirmed">By State: Confirmed Tests</a></li>
+            <li><a href="#canvas-deaths">By State: Total Cumulative Deaths</a></li>
+            <li><a href="#canvas-confirmed-aligned">By State: Confirmed Tests, Aligned to First Confirmed Test</a></li>
+            <li><a href="#canvas-deaths-aligned">By State: Total Cumulative Deaths, Aligned to First Death</a></li>
+        </ul>
+
+    <p>Charts by county:
+        <ul>
+            <li><a href="#canvas-county-sm-confirmed">By Small County (pop < 30k): Confirmed Tests, Top 30 Counties</a></li>
+            <li><a href="#canvas-county-sm-deaths">By Small County (pop < 30k): Total Cumulative Deaths, Top 30 Counties</a></li>
+            <li><a href="#canvas-county-md-confirmed">By Med-Sized County (pop 30k-90k): Confirmed Tests, Top 30 Counties</a></li>
+            <li><a href="#canvas-county-md-deaths">By Med-Sized County (pop 30k-90k): Total Cumulative Deaths, Top 30 Counties</a></li>
+            <li><a href="#canvas-county-lg-confirmed">By Large County (pop >= 90k): Confirmed Tests, Top 30 Counties</a></li>
+            <li><a href="#canvas-county-lg-deaths">By Large County (pop >= 90k): Total Cumulative Deaths, Top 30 Counties</a></li>
         </ul>
 
     <p>Notes:
@@ -578,10 +649,22 @@
         <canvas id="canvas-deaths-aligned"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-county-confirmed"></canvas>
+        <canvas id="canvas-county-sm-confirmed"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-county-deaths"></canvas>
+        <canvas id="canvas-county-sm-deaths"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-county-md-confirmed"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-county-md-deaths"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-county-lg-confirmed"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-county-lg-deaths"></canvas>
     </div>
 
 </body>
