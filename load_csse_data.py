@@ -343,7 +343,7 @@ def create_counties_ranked(conn):
             FROM Filtered t1
             LEFT JOIN fips_population t2
                 ON t1.FIPS = t2.FIPS 
-            WHERE Population >= 25000
+            --WHERE Population >= 25000
         )
         ,Latest AS (
             SELECT
