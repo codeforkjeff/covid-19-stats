@@ -413,7 +413,7 @@ def export_counties_ranked(conn):
     c = conn.cursor()
 
     c.execute('''
-        SELECT * FROM counties_ranked;
+        SELECT * FROM counties_ranked ORDER BY FIPS, Date;
     ''')
 
     rows = c.fetchall()
