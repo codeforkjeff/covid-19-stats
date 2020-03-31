@@ -418,17 +418,16 @@ def export_counties_ranked(conn):
 
     rows = c.fetchall()
 
-    # with codecs.open("counties_ranked.csv", "w", encoding='utf8') as f:
-    #     for column in rows[0].keys():
-    #         print(column)
-    #         f.write(column)
-    #         f.write("\t")
-    #     f.write("\n")
-    #     for row in rows[1:]:
-    #         for value in row:
-    #             f.write(str(value))
-    #             f.write("\t")
-    #         f.write("\n")
+    with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
+        for column in rows[0].keys():
+            f.write(column)
+            f.write("\t")
+        f.write("\n")
+        for row in rows[1:]:
+            for value in row:
+                f.write(str(value))
+                f.write("\t")
+            f.write("\n")
 
     with codecs.open("data/counties_ranked.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
