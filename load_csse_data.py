@@ -310,6 +310,8 @@ def create_counties_ranked(conn):
             Population int,
             ConfirmedPer1M real,
             DeathsPer1M real,
+            DeltaConfirmedPer1M real,
+            DeltaDeathsPer1M real,
             ConfirmedRank int,
             DeathRank int
         )
@@ -343,14 +345,23 @@ def create_counties_ranked(conn):
             FROM Filtered t1
             LEFT JOIN fips_population t2
                 ON t1.FIPS = t2.FIPS 
-            --WHERE Population >= 25000
+        )
+        ,WithDeltas as (
+            select
+                t1.*
+                ,t1.ConfirmedPer1M - t2.ConfirmedPer1M as DeltaConfirmedPer1M
+                ,t1.DeathsPer1M - t2.DeathsPer1M as DeltaDeathsPer1M
+            from WithPopulation t1
+            left join WithPopulation t2 
+                on t1.fips = t2.fips
+                and t1.DateRank = t2.DateRank - 1
         )
         ,Latest AS (
             SELECT
                 FIPS
                 ,MAX(ConfirmedPer1M) AS LatestConfirmedPer1M
                 ,MAX(DeathsPer1M) AS LatestDeathsPer1M
-            FROM WithPopulation
+            FROM WithDeltas
             WHERE DateRank = 1
             GROUP BY FIPS
         )
@@ -359,7 +370,7 @@ def create_counties_ranked(conn):
                 t1.*
                 ,t2.LatestConfirmedPer1M
                 ,t2.LatestDeathsPer1M
-            FROM WithPopulation t1
+            FROM WithDeltas t1
             LEFT JOIN Latest t2
                 ON t1.FIPS = t2.FIPS
         )
@@ -386,6 +397,8 @@ def create_counties_ranked(conn):
             ,Population
             ,ConfirmedPer1M
             ,DeathsPer1M
+            ,DeltaConfirmedPer1M
+            ,DeltaDeathsPer1M
             ,ConfirmedRank
             ,DeathRank
         FROM WithLatest t1
