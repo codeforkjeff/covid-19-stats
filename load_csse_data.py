@@ -154,11 +154,41 @@ def load_county_info(conn):
     c.execute('''
         CREATE TABLE fips_population
         AS SELECT
-            STATE,
-            COUNTY,
+            STNAME,
+            CTYNAME,
             STATE || COUNTY AS FIPS,
             CAST(POPESTIMATE2019 as INT) as Population
         FROM county_population;
+    ''')
+
+    # Patch NYC: CSSE aggregates all 5 counties of NYC. Reusing code 36061
+    # is misleading, IMO, but that's how it is. so we patch our pop count
+    # to follow suit
+
+    c.execute('''
+        DROP TABLE IF EXISTS nyc_patch
+    ''');
+
+    c.execute('''
+        CREATE TABLE nyc_patch
+        AS SELECT
+            SUM(Population) as Population
+        FROM fips_population
+        WHERE FIPS IN (
+            '36061', -- New York County
+            '36005', -- Bronx County
+            '36047', -- Kings County
+            '36081', -- Queens County
+            '36085' -- Richmond County
+        ) 
+    ''')
+
+    c.execute('''
+        UPDATE fips_population
+        SET
+            Population = (SELECT Population from nyc_patch)
+        WHERE
+            FIPS = '36061'
     ''')
 
     conn.commit()
@@ -312,6 +342,8 @@ def create_counties_ranked(conn):
             DeathsPer1M real,
             DeltaConfirmedPer1M real,
             DeltaDeathsPer1M real,
+            Avg5DaysConfirmedPer1M real,
+            Avg5DaysDeathsPer1M real,
             ConfirmedRank int,
             DeathRank int
         )
@@ -351,10 +383,15 @@ def create_counties_ranked(conn):
                 t1.*
                 ,t1.ConfirmedPer1M - t2.ConfirmedPer1M as DeltaConfirmedPer1M
                 ,t1.DeathsPer1M - t2.DeathsPer1M as DeltaDeathsPer1M
+                ,(t1.ConfirmedPer1M - t3.ConfirmedPer1M) / 5.0 as Avg5DaysConfirmedPer1M
+                ,(t1.DeathsPer1M - t3.DeathsPer1M) / 5.0 as Avg5DaysDeathsPer1M
             from WithPopulation t1
             left join WithPopulation t2 
                 on t1.fips = t2.fips
                 and t1.DateRank = t2.DateRank - 1
+            left join WithPopulation t3
+                on t1.fips = t3.fips
+                and t1.DateRank = t3.DateRank - 5
         )
         ,Latest AS (
             SELECT
@@ -399,6 +436,8 @@ def create_counties_ranked(conn):
             ,DeathsPer1M
             ,DeltaConfirmedPer1M
             ,DeltaDeathsPer1M
+            ,Avg5DaysConfirmedPer1M
+            ,Avg5DaysDeathsPer1M
             ,ConfirmedRank
             ,DeathRank
         FROM WithLatest t1
