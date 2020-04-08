@@ -499,12 +499,12 @@ def export_counties_ranked(conn):
             Confirmed,
             Deaths,
             Population,
+            ROUND(ConfirmedPer1M, 3) AS ConfirmedPer1M,
+            ROUND(DeathsPer1M, 3) AS DeathsPer1M,
             ROUND(DeltaConfirmedPer1M, 3) AS DeltaConfirmedPer1M,
             ROUND(DeltaDeathsPer1M, 3) AS DeltaDeathsPer1M,
             ROUND(Avg5DaysConfirmedPer1M, 3) AS Avg5DaysConfirmedPer1M,
-            ROUND(Avg5DaysDeathsPer1M, 3) AS Avg5DaysDeathsPer1M,
-            ROUND(ConfirmedPer1M, 3) AS ConfirmedPer1M,
-            ROUND(DeathsPer1M, 3) AS DeathsPer1M
+            ROUND(Avg5DaysDeathsPer1M, 3) AS Avg5DaysDeathsPer1M
         FROM T
         WHERE
             rank_latest = 1
