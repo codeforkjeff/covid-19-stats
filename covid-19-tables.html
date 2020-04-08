@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>COVID-19 U.S. Stats Per Capita</title>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="COVID-19 U.S. Stats Per Capita">
+    <meta property="og:description" content="Table showing rates of change for U.S. Counties">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.js"></script>
+
+    <style>
+      table.dataTable tbody td {
+        text-align: right;
+      }
+      table.dataTable {
+        font-family: Arial;
+        font-size: 13px;
+      }
+    </style>
+
+    <script>
+        $(document).ready(function() {
+
+            $.ajax("data/counties_rate_of_change.json?", { cache: false }).done(function(data) {
+              $("#heading").html("Data As of " + data[0]['Date']);
+
+              data = data.map(row => {
+                var fieldnames = Object.keys(row);
+                var values = fieldnames
+                  .filter(fieldname => fieldname != 'Date')
+                  .map(fieldname => row[fieldname]);
+                return values;
+              });
+
+              var table = $('#counties').DataTable({
+                data: data,
+                lengthMenu: [[20, 50, -1], [20, 50, "All"]]
+              });
+
+              table
+                .column( '2:visible' )
+                .order( 'desc' )
+                .draw();
+            })
+            .fail(function() {
+                alert( "error" );
+            });
+
+         });
+
+    </script>
+
+</head>
+<body>
+
+<h2 id="heading"></h2>
+
+  <p>Sources:
+      <ul>
+          <li><a href="https://github.com/CSSEGISandData/COVID-19">Novel Coronavirus (COVID-19) Cases, provided by JHU CSSE</a> - county-level data</li>
+          <li><a href="https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html">Census Bureau: County Population Totals: 2010-2019</a> - county population totals</li>
+      </ul>
+
+  <table id="counties" class="display">
+    <thead>
+      <tr>
+        <th>County
+        </th>
+        <th>State
+        </th>
+        <th>Confirmed Cases
+        </th>
+        <th>Deaths
+        </th>
+        <th>Population
+        </th>
+        <th>Change over Last Day<br/>in Confirmed Cases Per 1M Pop.
+        </th>
+        <th>Change over Last Day<br/>in Deaths Per 1M Pop.
+        </th>
+        <th>Avg over Last 5 Days<br/>in Confirmed Cases Per 1M Pop.
+        </th>
+        <th>Avg over Last 5 Days<br/>in Deaths Per 1M Pop.
+        </th>
+        <th>Confirmed Cases Per 1M Pop.
+        </th>
+        <th>Deaths Per 1M Pop.
+        </th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+    </tbody>
+  </table>
+
+</body>
+</html>

@@ -485,6 +485,41 @@ def export_counties_ranked(conn):
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
 
+    c.execute('''
+        WITH T AS (
+            select
+                *,
+                ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date DESC) as rank_latest
+            from counties_ranked
+        )
+        select
+            Date,
+            Admin2 AS County,
+            StateAbbrev as State,
+            Confirmed,
+            Deaths,
+            Population,
+            ROUND(DeltaConfirmedPer1M, 3) AS DeltaConfirmedPer1M,
+            ROUND(DeltaDeathsPer1M, 3) AS DeltaDeathsPer1M,
+            ROUND(Avg5DaysConfirmedPer1M, 3) AS Avg5DaysConfirmedPer1M,
+            ROUND(Avg5DaysDeathsPer1M, 3) AS Avg5DaysDeathsPer1M,
+            ROUND(ConfirmedPer1M, 3) AS ConfirmedPer1M,
+            ROUND(DeathsPer1M, 3) AS DeathsPer1M
+        FROM T
+        WHERE
+            rank_latest = 1
+            AND state is not null
+            AND Admin2 <> 'Unassigned'
+            AND Admin2 not like 'Out of%'
+        ORDER BY DeltaDeathsPer1M DESC;
+    ''')
+
+    rows = c.fetchall()
+
+    with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
+        f.write(json.dumps([row_to_dict(row) for row in rows]))
+
+
 def export_state_info(conn):
 
     c = conn.cursor()
