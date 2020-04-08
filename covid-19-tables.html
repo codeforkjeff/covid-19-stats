@@ -18,17 +18,22 @@
         font-family: Arial;
         font-size: 13px;
       }
+      #filters {
+        margin-bottom: 1em;
+      }
     </style>
 
     <script>
         $(document).ready(function() {
+
+            var table;
 
             $.ajax("data/counties_rate_of_change.json?", { cache: false }).done(function(data) {
               var date = data[0]['Date'];
               date = date.substring(0,4) + "/" + date.substring(4,6) + "/" + date.substring(6,8);
               $("#heading").html("Data As of " + date);
 
-              data = data.map(row => {
+              var table_data = data.map(row => {
                 var fieldnames = Object.keys(row);
                 var values = fieldnames
                   .filter(fieldname => fieldname != 'Date')
@@ -36,18 +41,70 @@
                 return values;
               });
 
-              var table = $('#counties').DataTable({
-                data: data,
+              var states_set = new Set(data.map(row => row['State']));
+              var states = Array.from(states_set.values());
+              states.sort();
+              states.forEach(state => {
+                $("#filter-state").append("<option value='" + state + "'>" + state + "</option>");
+              });
+
+              table = $('#counties').DataTable({
+                data: table_data,
                 lengthMenu: [[20, 50, -1], [20, 50, "All"]]
               });
 
               table
-                .column( '2:visible' )
+                .column( '6:visible' )
                 .order( 'desc' )
                 .draw();
             })
             .fail(function() {
                 alert( "error" );
+            });
+
+            $("#filter-state").val("");
+            $("#filter-county-size").val("");
+
+            $.fn.dataTable.ext.search.push (
+                function( settings, data, dataIndex ) {
+                    var state = $("#filter-state").val();
+                    var county_size = $("#filter-county-size").val();
+
+                    var okay = true;
+
+                    if(state != '' && state != data[1]) {
+                      okay = false;
+                    }
+
+                    if(county_size == "small") {
+                      if(data[4] < 30000) {
+                        okay = okay && true;
+                      } else {
+                        okay = false;
+                      }
+                    } else if (county_size == "medium") {
+                      if(data[4] >= 30000 && data[4] <= 90000) {
+                        okay = okay && true;
+                      } else {
+                        okay = false;
+                      }
+                    } else if (county_size == "large") {
+                      if(data[4] > 90000) {
+                        okay = okay && true;
+                      } else {
+                        okay = false;
+                      }
+                    }
+                    return okay;
+                }
+            );
+
+            $("#filter-county-size").change(function() {
+              table.draw();
+            });
+
+            $("#filter-state").change(function() {
+              table.draw();
             });
 
          });
@@ -64,6 +121,23 @@
           <li><a href="https://github.com/CSSEGISandData/COVID-19">Novel Coronavirus (COVID-19) Cases, provided by JHU CSSE</a> - county-level data</li>
           <li><a href="https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html">Census Bureau: County Population Totals: 2010-2019</a> - county population totals</li>
       </ul>
+
+  <form id="filters">
+    <span>Filter by State:</span>
+
+    <select id="filter-state">
+      <option value="" selected>All States</option>
+    </select>
+
+    <span>Filter by County Size:</span>
+
+    <select id="filter-county-size">
+      <option value="" selected>All Counties</option>
+      <option value="small">Small (< 30k)</option>
+      <option value="medium">Medium (30k - 90k)</option>
+      <option value="large">Large (> 90k)</option>
+    </select>
+  </form>
 
   <table id="counties" class="display">
     <thead>
