@@ -24,7 +24,9 @@
         $(document).ready(function() {
 
             $.ajax("data/counties_rate_of_change.json?", { cache: false }).done(function(data) {
-              $("#heading").html("Data As of " + data[0]['Date']);
+              var date = data[0]['Date'];
+              date = date.substring(0,4) + "/" + date.substring(4,6) + "/" + date.substring(6,8);
+              $("#heading").html("Data As of " + date);
 
               data = data.map(row => {
                 var fieldnames = Object.keys(row);
@@ -76,17 +78,17 @@
         </th>
         <th>Population
         </th>
-        <th>Confirmed Cases Per 1M Pop.
+        <th>Confirmed Cases<br/>Per 1M Pop.
         </th>
-        <th>Deaths Per 1M Pop.
+        <th>Deaths<br/>Per 1M Pop.
         </th>
-        <th>Change over Last Day<br/>in Confirmed Cases Per 1M Pop.
+        <th>Change in Last Day in<br/>Confirmed Cases<br/>Per 1M Pop.
         </th>
-        <th>Change over Last Day<br/>in Deaths Per 1M Pop.
+        <th>Change in Last Day in<br/>Deaths<br/> Per 1M Pop.
         </th>
-        <th>Avg over Last 5 Days<br/>in Confirmed Cases Per 1M Pop.
+        <th>Avg over Last 5 Days in<br/>Confirmed Cases<br/>Per 1M Pop.
         </th>
-        <th>Avg over Last 5 Days<br/>in Deaths Per 1M Pop.
+        <th>Avg over Last 5 Days in<br/>Deaths<br/>Per 1M Pop.
         </th>
       </tr>
     </thead>
