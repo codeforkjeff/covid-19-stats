@@ -107,6 +107,14 @@
               table.draw();
             });
 
+            $("#adj-cols-only").click(function() {
+
+              var visible = ! $("#adj-cols-only").is(":checked");
+
+              table
+                .columns(['2','3','4'])
+                .visible(visible);
+            });
          });
 
     </script>
@@ -137,9 +145,14 @@
       <option value="medium">Medium (30k - 90k)</option>
       <option value="large">Large (> 90k)</option>
     </select>
+
+    <span>Show only columns adjusted to pop. </span>
+
+    <input type="checkbox" id="adj-cols-only"/>
+
   </form>
 
-  <table id="counties" class="display">
+  <table id="counties" class="display" style="width: 100%">
     <thead>
       <tr>
         <th>County
