@@ -97,6 +97,10 @@ def load_csse(conn):
             AND length(fips) > 0
     ''')
 
+    c.execute('''
+        CREATE INDEX idx ON csse (FIPS);
+    ''')
+
     conn.commit()
 
     # -- find rows that should havbe a fips code but doesn't.
