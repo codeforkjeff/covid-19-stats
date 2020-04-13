@@ -32,14 +32,44 @@ def load_csse(conn):
 
     all_rows = []
 
+    ordered_fields = [
+        "FIPS",
+        "Admin2",
+        "Province_State",
+        "Country_Region",
+        "Last_Update",
+        "Lat",
+        "Long_",
+        "Confirmed",
+        "Deaths",
+        "Recovered",
+        "Active",
+        "Combined_Key",
+    ]
+
     for path in filtered_paths:
         print(f"Loading from {path.path}")
         with codecs.open(path.path, encoding='utf8') as f:
             reader = csv.reader(f)
-            rows = [[path.date] + row for row in reader]
-            rows = rows[1:]
+            field_order_in_file = []
+            first_row = True
+            for row in reader:
+                if first_row:
+                    field_order_in_file = row
+                    # strip out BOM
+                    if field_order_in_file[0].encode().startswith(codecs.BOM_UTF8):
+                        # this is ridiculous
+                        field_order_in_file[0] = field_order_in_file[0].encode()[len(codecs.BOM_UTF8):].decode()
+                else:
+                    reordered = []
+                    for field in ordered_fields:
+                        reordered.append(row[field_order_in_file.index(field)])
 
-            all_rows += rows
+                    row = [path.date] + reordered
+
+                    all_rows.append(row)
+
+                first_row = False
 
     print(f"Writing {len(all_rows)} rows to the database")
 
