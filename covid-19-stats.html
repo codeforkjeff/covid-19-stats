@@ -4,7 +4,7 @@
     <title>COVID-19 U.S. Stats Per Capita</title>
     <meta property="og:type" content="website">
     <meta property="og:title" content="COVID-19 U.S. Stats Per Capita">
-    <meta property="og:description" content="Charts showing U.S. County and State trends for confirmed cases and deaths per capita">
+    <meta property="og:description" content="Charts showing U.S. County and State trends for positive cases and deaths per capita">
     <style>
     canvas {
         -moz-user-select: none;
@@ -165,6 +165,11 @@
         // data for a chart
         function get_states_chart_data(data, field, align_start = false) {
 
+            var original_field_arg = field;
+            if(field == 'positive-rate') {
+                field = 'positive';
+            }
+
             var data_for_states_all = data
                 .reduce((acc, record) => {
                     var state = record.state;
@@ -174,13 +179,26 @@
                             if (!acc[state]) {
                                 acc[state] = [];
                             }
-                            var y = record[field] / (pop / 1000000);
-                            y = Math.round(y * 10000) / 10000;
+                            var y;
+                            if(original_field_arg == 'positive-rate') {
+                                y = record[field] / record['totalTestResults'] * 100;
+                            } else {
+                                y = record[field] / (pop / 1000000);
+                                y = Math.round(y * 10000) / 10000;
+                            }
+
+                            var population;
+                            if(original_field_arg == 'positive-rate') {
+                                population = record['totalTestResults'];
+                            } else {
+                                population = pop;
+                            }
+
                             acc[state].push({
                                 x: datevalue_to_date(record.date),
                                 y: y,
                                 count: record[field],
-                                population: pop
+                                population: population
                             });
                         }
                     }
@@ -247,18 +265,23 @@
             };
         }
 
-        function tooltip_count_pop(tooltipItem, data) {
-            var label = data.datasets[tooltipItem.datasetIndex].label || '';
-            var datum = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
-            if (label) {
-                label += ': ';
+        function tooltip_count_pop_factory(countLabel="Count", populationLabel="Pop") {
+            var countLabel2 = countLabel;
+            var populationLabel2 = populationLabel;
+
+            return function (tooltipItem, data) {
+                var label = data.datasets[tooltipItem.datasetIndex].label || '';
+                var datum = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+                if (label) {
+                    label += ': ';
+                }
+                label += tooltipItem.yLabel;
+                label += " - " + countLabel2 + ": " + Number(datum.count).toLocaleString() + " / " + populationLabel2 + ": " + Number(datum.population).toLocaleString();
+                if(datum.date) {
+                    label += " on " + datum.date.toDateString();
+                }
+                return label;
             }
-            label += tooltipItem.yLabel;
-            label += " - Count: " + Number(datum.count).toLocaleString() + " / Pop: " + Number(datum.population).toLocaleString();
-            if(datum.date) {
-                label += " on " + datum.date.toDateString();
-            }
-            return label;
         }
 
         function tooltip_title(items, data) {
@@ -391,7 +414,7 @@
             function clone_config_template() {
                 var config = copy_object(config_template);
                 // function reference this can't be copied
-                config.options.tooltips.callbacks.label = tooltip_count_pop;
+                config.options.tooltips.callbacks.label = tooltip_count_pop_factory();
                 config.options.tooltips.callbacks.title = tooltip_title;
                 return config;
             }
@@ -442,19 +465,35 @@
 
                 var data = covidtracking_data;
 
-                // confirmed chart
+                // positive chart
 
-                var chart_data_confirmed = get_states_chart_data(data, 'positive');
+                var chart_data_positive = get_states_chart_data(data, 'positive');
 
-                var config_confirmed = clone_config_template();
-                config_xaxis_date(config_confirmed);
+                var config_positive = clone_config_template();
+                config_xaxis_date(config_positive);
 
-                config_confirmed.options.title.text = 'By State: Confirmed Tests';
-                config_confirmed.data.labels = chart_data_confirmed.labels;
-                config_confirmed.data.datasets = chart_data_confirmed.chart_data;
+                config_positive.options.title.text = 'By State: Positive Tests';
+                config_positive.data.labels = chart_data_positive.labels;
+                config_positive.data.datasets = chart_data_positive.chart_data;
 
-                var ctx_confirmed = document.getElementById('canvas-confirmed').getContext('2d');
-                new Chart(ctx_confirmed, config_confirmed);
+                var ctx_positive = document.getElementById('canvas-positive').getContext('2d');
+                new Chart(ctx_positive, config_positive);
+
+                // positive rate
+
+                var chart_data_positive_rate = get_states_chart_data(data, 'positive-rate');
+
+                var config_positive_rate = clone_config_template();
+                config_positive_rate.options.tooltips.callbacks.label = tooltip_count_pop_factory("Positives", "Total Tests");
+                config_xaxis_date(config_positive_rate);
+
+                config_positive_rate.options.title.text = 'By State: Positivity Rate';
+                config_positive_rate.options.scales.yAxes[0].scaleLabel.labelString = 'Pct';
+                config_positive_rate.data.labels = chart_data_positive_rate.labels;
+                config_positive_rate.data.datasets = chart_data_positive_rate.chart_data;
+
+                var ctx_positive_rate = document.getElementById('canvas-positive-rate').getContext('2d');
+                new Chart(ctx_positive_rate, config_positive_rate);
 
                 // deaths chart
 
@@ -470,19 +509,35 @@
                 var ctx_deaths = document.getElementById('canvas-deaths').getContext('2d');
                 new Chart(ctx_deaths, config_deaths);
 
-                // confirmed chart, aligned
+                // positive chart, aligned
 
-                var chart_data_confirmed_aligned = get_states_chart_data(data, 'positive', true);
+                var chart_data_positive_aligned = get_states_chart_data(data, 'positive', true);
 
-                var config_confirmed_aligned = clone_config_template();
-                config_xaxis_daycount(config_confirmed_aligned);
+                var config_positive_aligned = clone_config_template();
+                config_xaxis_daycount(config_positive_aligned);
 
-                config_confirmed_aligned.options.title.text = 'By State: Confirmed Tests, Aligned to First Confirmed Test';
-                config_confirmed_aligned.data.labels = chart_data_confirmed_aligned.labels;
-                config_confirmed_aligned.data.datasets = chart_data_confirmed_aligned.chart_data;
+                config_positive_aligned.options.title.text = 'By State: Positive Tests, Aligned to First Positive Test';
+                config_positive_aligned.data.labels = chart_data_positive_aligned.labels;
+                config_positive_aligned.data.datasets = chart_data_positive_aligned.chart_data;
 
-                var ctx_confirmed_aligned = document.getElementById('canvas-confirmed-aligned').getContext('2d');
-                new Chart(ctx_confirmed_aligned, config_confirmed_aligned);
+                var ctx_positive_aligned = document.getElementById('canvas-positive-aligned').getContext('2d');
+                new Chart(ctx_positive_aligned, config_positive_aligned);
+
+               // positive rate, aligned
+
+                var chart_data_positive_rate_aligned = get_states_chart_data(data, 'positive-rate', true);
+
+                var config_positive_rate_aligned = clone_config_template();
+                config_positive_rate_aligned.options.tooltips.callbacks.label = tooltip_count_pop_factory("Positives", "Total Tests");
+                config_xaxis_daycount(config_positive_rate_aligned);
+
+                config_positive_rate_aligned.options.title.text = 'By State: Positivity Rate, Aligned to First Positive Test';
+                config_positive_rate_aligned.options.scales.yAxes[0].scaleLabel.labelString = 'Pct';
+                config_positive_rate_aligned.data.labels = chart_data_positive_rate_aligned.labels;
+                config_positive_rate_aligned.data.datasets = chart_data_positive_rate_aligned.chart_data;
+
+                var ctx_positive_rate_aligned = document.getElementById('canvas-positive-rate-aligned').getContext('2d');
+                new Chart(ctx_positive_rate_aligned, config_positive_rate_aligned);
 
                 // deaths chart
 
@@ -543,10 +598,10 @@
                 // small
 
                 draw_chart_county(
-                    'By Small County (pop < 30k): Confirmed Tests, Top 30',
+                    'By Small County (pop < 30k): Positive Tests, Top 30',
                     'ConfirmedPer1M',
                     pop => pop < 30000,
-                    'canvas-county-sm-confirmed'
+                    'canvas-county-sm-positive'
                 );
 
                 draw_chart_county(
@@ -559,10 +614,10 @@
                 // medium
 
                 draw_chart_county(
-                    'By Med-Sized County (pop 30k-90k): Confirmed Tests, Top 30',
+                    'By Med-Sized County (pop 30k-90k): Positive Tests, Top 30',
                     'ConfirmedPer1M',
                     pop => pop >= 30000 && pop <= 90000,
-                    'canvas-county-md-confirmed'
+                    'canvas-county-md-positive'
                 );
 
                 draw_chart_county(
@@ -575,10 +630,10 @@
                 // large
 
                 draw_chart_county(
-                    'By Large County (pop >= 90k): Confirmed Tests, Top 30',
+                    'By Large County (pop >= 90k): Positive Tests, Top 30',
                     'ConfirmedPer1M',
                     pop => pop >= 90000,
-                    'canvas-county-lg-confirmed'
+                    'canvas-county-lg-positive'
                 );
 
                 draw_chart_county(
@@ -606,19 +661,21 @@
 
     <p>Charts by state:
         <ul>
-            <li><a href="#canvas-confirmed">By State: Confirmed Tests</a></li>
+            <li><a href="#canvas-positive">By State: Positive Tests</a></li>
+            <li><a href="#canvas-positive-rate">By State: Positivity Rate</a></li>
             <li><a href="#canvas-deaths">By State: Total Cumulative Deaths</a></li>
-            <li><a href="#canvas-confirmed-aligned">By State: Confirmed Tests, Aligned to First Confirmed Test</a></li>
+            <li><a href="#canvas-positive-aligned">By State: Positive Tests, Aligned to First Positive Test</a></li>
+            <li><a href="#canvas-positive-rate-aligned">By State: Positivity Rate, Aligned to First Positive Test</a></li>
             <li><a href="#canvas-deaths-aligned">By State: Total Cumulative Deaths, Aligned to First Death</a></li>
         </ul>
 
     <p>Charts by county:
         <ul>
-            <li><a href="#canvas-county-sm-confirmed">By Small County (pop < 30k): Confirmed Tests, Top 30</a></li>
+            <li><a href="#canvas-county-sm-positive">By Small County (pop < 30k): Positive Tests, Top 30</a></li>
             <li><a href="#canvas-county-sm-deaths">By Small County (pop < 30k): Total Cumulative Deaths, Top 30</a></li>
-            <li><a href="#canvas-county-md-confirmed">By Med-Sized County (pop 30k-90k): Confirmed Tests, Top 30</a></li>
+            <li><a href="#canvas-county-md-positive">By Med-Sized County (pop 30k-90k): Positive Tests, Top 30</a></li>
             <li><a href="#canvas-county-md-deaths">By Med-Sized County (pop 30k-90k): Total Cumulative Deaths, Top 30</a></li>
-            <li><a href="#canvas-county-lg-confirmed">By Large County (pop >= 90k): Confirmed Tests, Top 30</a></li>
+            <li><a href="#canvas-county-lg-positive">By Large County (pop >= 90k): Positive Tests, Top 30</a></li>
             <li><a href="#canvas-county-lg-deaths">By Large County (pop >= 90k): Total Cumulative Deaths, Top 30</a></li>
         </ul>
 
@@ -637,31 +694,37 @@
         </ul>
 
     <div class="canvas-container">
-        <canvas id="canvas-confirmed"></canvas>
+        <canvas id="canvas-positive"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-positive-rate"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-deaths"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-confirmed-aligned"></canvas>
+        <canvas id="canvas-positive-aligned"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-positive-rate-aligned"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-deaths-aligned"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-county-sm-confirmed"></canvas>
+        <canvas id="canvas-county-sm-positive"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-county-sm-deaths"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-county-md-confirmed"></canvas>
+        <canvas id="canvas-county-md-positive"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-county-md-deaths"></canvas>
     </div>
     <div class="canvas-container">
-        <canvas id="canvas-county-lg-confirmed"></canvas>
+        <canvas id="canvas-county-lg-positive"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-county-lg-deaths"></canvas>
