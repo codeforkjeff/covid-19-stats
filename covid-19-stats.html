@@ -284,6 +284,17 @@
             }
         }
 
+        function tooltip_testing_rate(tooltipItem, data) {
+            var label = data.datasets[tooltipItem.datasetIndex].label || '';
+            var datum = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+            //label += " - Testing Rate: " + Number(datum.y).toLocaleString() + "% / Positivity Rate: " + Number(datum.x).toLocaleString() + "%";
+            label += " - Positives: " + datum.positives + " / Tests: " + datum.tests + " / State Pop: " + datum.state_population;
+            if(datum.date) {
+                label += " as of " + datum.date.substring(0, 10);
+            }
+            return label;
+        }
+
         function tooltip_title(items, data) {
             var title = items[0].xLabel;
             return title.substring(0, 12);
@@ -483,6 +494,9 @@
 
                 var chart_data_positive_rate = get_states_chart_data(data, 'positive-rate');
 
+                // make a copy here for testing rate chart below; chartjs modifies it which is annoying
+                var chart_data_testing_vs_positive_rate = copy_object(chart_data_positive_rate.chart_data);
+
                 var config_positive_rate = clone_config_template();
                 config_positive_rate.options.tooltips.callbacks.label = tooltip_count_pop_factory("Positives", "Total Tests");
                 config_xaxis_date(config_positive_rate);
@@ -494,6 +508,52 @@
 
                 var ctx_positive_rate = document.getElementById('canvas-positive-rate').getContext('2d');
                 new Chart(ctx_positive_rate, config_positive_rate);
+
+                // Positivity Rate vs Testing Rate
+
+                // this chart isn't like the others so this is a mess
+
+                // take most recent data from the positivity rate chart
+                chart_data_testing_vs_positive_rate.forEach(dataset => {
+                    delete dataset.fill;
+
+                    var state = dataset.label;
+                    var state_pop = parseFloat(states[state].Population);
+
+                    var point = dataset.data[dataset.data.length - 1];
+
+                    // better names for things
+                    point.state_population = state_pop;
+                    point.tests = point.population;
+                    point.positives = point.count;
+
+                    // copy_object changed date to a string. sigh.
+                    point.date = point.x;
+
+                    point.x = point.y;
+                    point.y = point.population / state_pop * 100;
+                    dataset.data = [ point ];
+                })
+
+                var config_testing_vs_positive_rate = clone_config_template();
+                config_testing_vs_positive_rate.options.tooltips.callbacks.label = tooltip_testing_rate;
+                delete config_testing_vs_positive_rate.options.tooltips.callbacks.title;
+
+                config_testing_vs_positive_rate.type = 'scatter';
+                config_testing_vs_positive_rate.options.title.text = 'By State: Positivity Rate vs Testing Rate';
+                config_testing_vs_positive_rate.options.scales.xAxes = [{
+                    type: 'linear',
+                    position: 'bottom',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Positivity Rate'
+                    }
+                }];
+                config_testing_vs_positive_rate.options.scales.yAxes[0].scaleLabel.labelString = 'Testing Rate (% of State Population)';
+                config_testing_vs_positive_rate.data.datasets = chart_data_testing_vs_positive_rate;
+
+                var ctx_testing_vs_positive_rate = document.getElementById('canvas-testing-vs-positive-rate').getContext('2d');
+                new Chart(ctx_testing_vs_positive_rate, config_testing_vs_positive_rate);
 
                 // deaths chart
 
@@ -663,6 +723,7 @@
         <ul>
             <li><a href="#canvas-positive">By State: Positive Tests</a></li>
             <li><a href="#canvas-positive-rate">By State: Positivity Rate</a></li>
+            <li><a href="#canvas-testing-vs-positive-rate">By State: Positivity Rate vs Testing Rate</a></li>
             <li><a href="#canvas-deaths">By State: Total Cumulative Deaths</a></li>
             <li><a href="#canvas-positive-aligned">By State: Positive Tests, Aligned to First Positive Test</a></li>
             <li><a href="#canvas-positive-rate-aligned">By State: Positivity Rate, Aligned to First Positive Test</a></li>
@@ -698,6 +759,9 @@
     </div>
     <div class="canvas-container">
         <canvas id="canvas-positive-rate"></canvas>
+    </div>
+    <div class="canvas-container">
+        <canvas id="canvas-testing-vs-positive-rate"></canvas>
     </div>
     <div class="canvas-container">
         <canvas id="canvas-deaths"></canvas>
