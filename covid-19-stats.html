@@ -287,8 +287,8 @@
         function tooltip_testing_rate(tooltipItem, data) {
             var label = data.datasets[tooltipItem.datasetIndex].label || '';
             var datum = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
-            //label += " - Testing Rate: " + Number(datum.y).toLocaleString() + "% / Positivity Rate: " + Number(datum.x).toLocaleString() + "%";
-            label += " - Positives: " + datum.positives + " / Tests: " + datum.tests + " / State Pop: " + datum.state_population;
+            label += " - Testing Rate: " + datum.y + "% / Positivity Rate: " + datum.x + "%";
+            label += " / Positives: " + datum.positives + " / Tests: " + datum.tests + " / State Pop: " + datum.state_population;
             if(datum.date) {
                 label += " as of " + datum.date.substring(0, 10);
             }
@@ -530,8 +530,10 @@
                     // copy_object changed date to a string. sigh.
                     point.date = point.x;
 
-                    point.x = point.y;
-                    point.y = point.population / state_pop * 100;
+                    var testing_pct = point.population / state_pop * 100;
+                    point.x = Math.round(point.y * 100) / 100;
+                    point.y = Math.round(testing_pct * 100) / 100;
+
                     dataset.data = [ point ];
                 })
 
