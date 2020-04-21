@@ -75,6 +75,10 @@ def load_csse(conn):
 
     c = conn.cursor()
 
+    c.execute("PRAGMA cache_size=1000000")
+    c.execute("PRAGMA journal_mode = OFF")
+    c.execute("PRAGMA temp_store = MEMORY")
+
     c.execute('''
         DROP TABLE IF EXISTS csse;
     ''')
@@ -225,6 +229,11 @@ def load_county_info(conn):
             FIPS = '36061'
     ''')
 
+
+    c.execute('''
+        CREATE INDEX idx_fips_population ON fips_population (FIPS);
+    ''')
+
     conn.commit()
 
     c.close()
@@ -332,6 +341,8 @@ def load_state_info(conn):
         ) AS t;
     ''')
 
+    c.execute('CREATE INDEX idx_state_abbreviations ON state_abbreviations (State)')
+
     conn.commit()
 
     c.execute('DROP TABLE IF EXISTS state_population')
@@ -354,6 +365,8 @@ def load_state_info(conn):
 
 
 def create_counties_ranked(conn):
+
+    print("create_counties_ranked")
 
     c = conn.cursor()
 
@@ -383,7 +396,26 @@ def create_counties_ranked(conn):
         )
     ''')
 
-    c.execute('''
+    c.executescript('''
+        DROP TABLE IF EXISTS csse_filtered;
+
+        CREATE TABLE csse_filtered (
+            Date text,
+            FIPS text,
+            Admin2 text,
+            Province_State text,
+            Country_Region text,
+            Last_Update text,
+            Lat text,
+            Long_ text,
+            Confirmed int,
+            Deaths int,
+            Recovered int,
+            Active int,
+            Combined_Key text,
+            ShouldHaveFIPS int
+            );
+
         WITH RegionsWithData AS (
             -- only take U.S. regions that have data
             select FIPS
@@ -401,18 +433,30 @@ def create_counties_ranked(conn):
             JOIN RegionsWithData t2
                 ON t1.FIPS = t2.FIPS
         )
-        ,WithPopulation AS (
+        INSERT INTO csse_filtered
+        SELECT *
+        FROM Filtered;
+
+        CREATE INDEX idx_csse_filtered ON csse_filtered (FIPS, Date);
+
+        DROP TABLE IF EXISTS WithPopulation;
+
+        CREATE TABLE WithPopulation AS
             SELECT
                 t1.*
                 ,Population
                 ,CAST(Confirmed AS REAL) / (CAST(Population AS REAL) / 1000000) as ConfirmedPer1M
                 ,CAST(Deaths AS REAL) / (CAST(Population AS REAL) / 1000000) as DeathsPer1M
                 ,ROW_NUMBER() OVER (PARTITION BY t1.FIPS ORDER BY Date DESC) As DateRank
-            FROM Filtered t1
+            FROM csse_filtered t1
             LEFT JOIN fips_population t2
-                ON t1.FIPS = t2.FIPS 
-        )
-        ,WithDeltas as (
+                ON t1.FIPS = t2.FIPS;
+
+        CREATE INDEX idx_WithPopulation ON WithPopulation (FIPS, DateRank);
+
+        DROP TABLE IF EXISTS WithDeltas;
+
+        CREATE TABLE WithDeltas as
             select
                 t1.*
                 ,t1.ConfirmedPer1M - t2.ConfirmedPer1M as DeltaConfirmedPer1M
@@ -426,26 +470,39 @@ def create_counties_ranked(conn):
             left join WithPopulation t3
                 on t1.fips = t3.fips
                 and t1.DateRank = t3.DateRank - 5
-        )
-        ,Latest AS (
+        ;
+
+        CREATE INDEX idx_WithDeltas ON WithDeltas (FIPS);
+
+        DROP TABLE IF EXISTS Latest;
+
+        CREATE TABLE Latest AS
             SELECT
                 FIPS
                 ,MAX(ConfirmedPer1M) AS LatestConfirmedPer1M
                 ,MAX(DeathsPer1M) AS LatestDeathsPer1M
             FROM WithDeltas
             WHERE DateRank = 1
-            GROUP BY FIPS
-        )
-        ,WithLatest as (
+            GROUP BY FIPS;
+
+        CREATE INDEX idx_Latest ON Latest (FIPS);
+
+        DROP TABLE IF EXISTS WithLatest;
+
+        CREATE TABLE WithLatest AS
             SELECT
                 t1.*
                 ,t2.LatestConfirmedPer1M
                 ,t2.LatestDeathsPer1M
             FROM WithDeltas t1
             LEFT JOIN Latest t2
-                ON t1.FIPS = t2.FIPS
-        )
-        ,WithRank AS (
+                ON t1.FIPS = t2.FIPS;
+
+        CREATE INDEX idx_WithLatest ON WithLatest (FIPS, LatestConfirmedPer1M, LatestDeathsPer1M);
+
+        DROP TABLE IF EXISTS WithRank;
+
+        CREATE TABLE WithRank AS
             SELECT
                 FIPS
                 ,LatestConfirmedPer1M
@@ -453,8 +510,10 @@ def create_counties_ranked(conn):
                 ,ROW_NUMBER() OVER (ORDER BY LatestConfirmedPer1M DESC) As ConfirmedRank
                 ,ROW_NUMBER() OVER (ORDER BY LatestDeathsPer1M DESC) As DeathRank
             FROM WithLatest
-            GROUP BY FIPS, LatestConfirmedPer1M, LatestDeathsPer1M
-        )
+            GROUP BY FIPS, LatestConfirmedPer1M, LatestDeathsPer1M;
+
+        CREATE INDEX idx_WithRank ON WithRank (FIPS, ConfirmedRank);
+
         INSERT INTO counties_ranked
         SELECT
             Date
@@ -495,6 +554,8 @@ def row_to_dict(row):
 
 
 def export_counties_ranked(conn):
+
+    print("exporting")
 
     c = conn.cursor()
 
@@ -573,11 +634,12 @@ conn.row_factory = sqlite3.Row
 
 load_csse(conn)
 load_county_info(conn)
-create_counties_ranked(conn)
-export_counties_ranked(conn)
 
 load_state_info(conn)
 export_state_info(conn)
+
+create_counties_ranked(conn)
+export_counties_ranked(conn)
 
 conn.close()
 
