@@ -538,7 +538,10 @@ def create_counties_ranked(conn):
             ON t1.FIPS = t2.FIPS
         LEFT JOIN state_abbreviations t3
             ON t1.Province_State = t3.State
-        ORDER BY ConfirmedRank
+        ORDER BY ConfirmedRank;
+
+        CREATE INDEX idx_counties_ranked ON counties_ranked (FIPS, Date);
+
     ''')
 
     conn.commit()
