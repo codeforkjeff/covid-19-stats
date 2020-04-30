@@ -459,7 +459,7 @@
 
             $.when(
 
-                $.get("https://covidtracking.com/api/states/daily", function(data) {
+                $.get("https://covidtracking.com/api/v1/states/daily.json", function(data) {
                     covidtracking_data = data;
                 }),
 
