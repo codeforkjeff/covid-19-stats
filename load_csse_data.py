@@ -101,7 +101,6 @@ def load_csse(conn):
             Combined_Key text,
             ShouldHaveFIPS int
             )
-
     ''')
 
     c.executemany('INSERT INTO csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
@@ -366,35 +365,9 @@ def load_state_info(conn):
 
 def create_counties_ranked(conn):
 
-    print("create_counties_ranked")
-
     c = conn.cursor()
 
-    c.execute('''
-        DROP TABLE IF EXISTS counties_ranked;
-    ''')
-
-    c.execute('''
-        CREATE TABLE counties_ranked (
-            Date text,
-            FIPS text,
-            Admin2 text,
-            Province_State text,
-            StateAbbrev text,
-            Country_Region text,
-            Confirmed int,
-            Deaths int,
-            Population int,
-            ConfirmedPer1M real,
-            DeathsPer1M real,
-            DeltaConfirmedPer1M real,
-            DeltaDeathsPer1M real,
-            Avg5DaysConfirmedPer1M real,
-            Avg5DaysDeathsPer1M real,
-            ConfirmedRank int,
-            DeathRank int
-        )
-    ''')
+    print("csse_filtered")
 
     c.executescript('''
         DROP TABLE IF EXISTS csse_filtered;
@@ -438,7 +411,11 @@ def create_counties_ranked(conn):
         FROM Filtered;
 
         CREATE INDEX idx_csse_filtered ON csse_filtered (FIPS, Date);
+    ''')
 
+    print("WithPopulation")
+
+    c.executescript('''
         DROP TABLE IF EXISTS WithPopulation;
 
         CREATE TABLE WithPopulation AS
@@ -453,7 +430,11 @@ def create_counties_ranked(conn):
                 ON t1.FIPS = t2.FIPS;
 
         CREATE INDEX idx_WithPopulation ON WithPopulation (FIPS, DateRank);
+    ''')
 
+    print("WithDeltas")
+
+    c.executescript('''
         DROP TABLE IF EXISTS WithDeltas;
 
         CREATE TABLE WithDeltas as
@@ -473,7 +454,11 @@ def create_counties_ranked(conn):
         ;
 
         CREATE INDEX idx_WithDeltas ON WithDeltas (FIPS);
+    ''')
 
+    print("Latest")
+
+    c.executescript('''
         DROP TABLE IF EXISTS Latest;
 
         CREATE TABLE Latest AS
@@ -486,7 +471,11 @@ def create_counties_ranked(conn):
             GROUP BY FIPS;
 
         CREATE INDEX idx_Latest ON Latest (FIPS);
+    ''')
 
+    print("WithLatest")
+
+    c.executescript('''
         DROP TABLE IF EXISTS WithLatest;
 
         CREATE TABLE WithLatest AS
@@ -499,7 +488,11 @@ def create_counties_ranked(conn):
                 ON t1.FIPS = t2.FIPS;
 
         CREATE INDEX idx_WithLatest ON WithLatest (FIPS, LatestConfirmedPer1M, LatestDeathsPer1M);
+    ''')
 
+    print("WithRank")
+
+    c.executescript('''
         DROP TABLE IF EXISTS WithRank;
 
         CREATE TABLE WithRank AS
@@ -513,6 +506,33 @@ def create_counties_ranked(conn):
             GROUP BY FIPS, LatestConfirmedPer1M, LatestDeathsPer1M;
 
         CREATE INDEX idx_WithRank ON WithRank (FIPS, ConfirmedRank);
+    ''')
+
+
+    print("counties_ranked")
+
+    c.executescript('''
+        DROP TABLE IF EXISTS counties_ranked;
+
+        CREATE TABLE counties_ranked (
+            Date text,
+            FIPS text,
+            Admin2 text,
+            Province_State text,
+            StateAbbrev text,
+            Country_Region text,
+            Confirmed int,
+            Deaths int,
+            Population int,
+            ConfirmedPer1M real,
+            DeathsPer1M real,
+            DeltaConfirmedPer1M real,
+            DeltaDeathsPer1M real,
+            Avg5DaysConfirmedPer1M real,
+            Avg5DaysDeathsPer1M real,
+            ConfirmedRank int,
+            DeathRank int
+        );
 
         INSERT INTO counties_ranked
         SELECT
@@ -558,7 +578,7 @@ def row_to_dict(row):
 
 def export_counties_ranked(conn):
 
-    print("exporting")
+    print("exporting counties_ranked")
 
     c = conn.cursor()
 
@@ -568,29 +588,35 @@ def export_counties_ranked(conn):
 
     rows = c.fetchall()
 
-    with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
-        for column in rows[0].keys():
-            f.write(column)
-            f.write("\t")
-        f.write("\n")
-        for row in rows[1:]:
-            for value in row:
-                f.write(str(value))
-                f.write("\t")
-            f.write("\n")
+    # with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
+    #     for column in rows[0].keys():
+    #         f.write(column)
+    #         f.write("\t")
+    #     f.write("\n")
+    #     for row in rows[1:]:
+    #         for value in row:
+    #             f.write(str(value))
+    #             f.write("\t")
+    #         f.write("\n")
 
     with codecs.open("data/counties_ranked.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
+    print("exporting counties_rate_of_change")
 
-    c.execute('''
-        WITH T AS (
+    c.executescript('''
+
+        DROP TABLE IF EXISTS counties_ranked_by_date;
+
+        CREATE TABLE counties_ranked_by_date AS
             select
                 *,
                 ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date DESC) as rank_latest
-            from counties_ranked
-        )
-        select
+            from counties_ranked;
+
+        CREATE INDEX idx_counties_ranked_by_date ON counties_ranked_by_date(rank_latest, StateAbbrev, Admin2);
+
+        SELECT
             Date,
             Admin2 AS County,
             StateAbbrev as State,
@@ -603,7 +629,7 @@ def export_counties_ranked(conn):
             ROUND(DeltaDeathsPer1M, 3) AS DeltaDeathsPer1M,
             ROUND(Avg5DaysConfirmedPer1M, 3) AS Avg5DaysConfirmedPer1M,
             ROUND(Avg5DaysDeathsPer1M, 3) AS Avg5DaysDeathsPer1M
-        FROM T
+        FROM counties_ranked_by_date
         WHERE
             rank_latest = 1
             AND state is not null
