@@ -615,7 +615,9 @@ def export_counties_ranked(conn):
             from counties_ranked;
 
         CREATE INDEX idx_counties_ranked_by_date ON counties_ranked_by_date(rank_latest, StateAbbrev, Admin2);
+    ''')
 
+    c.execute('''
         SELECT
             Date,
             Admin2 AS County,
