@@ -5,7 +5,7 @@ This is me just playing around with data. You shouldn't use this for anything ex
 
 # Charts
 
-Various charts for COVID-19 statistics for the United States, adjusted for population size.
+Various charts for COVID-19 statistics for the United States, adjusted for population size, by county and by state.
 
 To view them, go here:
 
