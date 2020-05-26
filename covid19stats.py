@@ -12,9 +12,6 @@ import sqlite3
 import sys
 import urllib.request
 
-import pandas as pd
-import pandas.io.sql as psql
-
 Path = namedtuple('Path', ['path', 'date'])
 
 
@@ -792,100 +789,15 @@ def export_state_info(conn):
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
 
-def correlation_analysis(conn):
-
-    # exploratory
-
-    sql = """
-    SELECT
-        Deaths,
-        MedianAge
-    FROM fact_counties_ranked cr
-    JOIN dim_county c
-        ON cr.FIPS = c.FIPS
-    WHERE
-        Date = '20200501'
-        AND MedianAge > 0
-        AND Deaths >= 0;
-    """
-
-    df = psql.read_sql(sql, conn)
-    c = df.corr()
-    print(c)
-
-    sql = """
-    SELECT
-        Confirmed,
-        MedianIncome
-    FROM fact_counties_ranked cr
-    JOIN dim_county c
-        ON cr.FIPS = c.FIPS
-    WHERE
-        Date = '20200501'
-        AND MedianIncome > 0
-        AND Confirmed >= 0;
-    """
-
-    df = psql.read_sql(sql, conn)
-    c = df.corr()
-    print(c)
-    
-    sql = """
-    SELECT
-        ConfirmedPer1M,
-        MedianIncome
-    FROM fact_counties_ranked cr
-    JOIN dim_county c
-        ON cr.FIPS = c.FIPS
-    WHERE
-        Date = '20200501'
-        AND MedianIncome > 0
-        AND ConfirmedPer1M >= 0;
-    """
-
-    df = psql.read_sql(sql, conn)
-    c = df.corr()
-    print(c)
-
-
-    sql = """
-    SELECT
-        Confirmed,
-        Population
-    FROM fact_counties_ranked cr
-    JOIN dim_county c
-        ON cr.FIPS = c.FIPS
-    WHERE
-        Date = '20200501'
-        AND Population > 0
-        AND Confirmed >= 0;
-    """
-    
-    df = psql.read_sql(sql, conn)
-    c = df.corr()
-    print(c)
-
-
-    sql = """
-    SELECT
-        Confirmed,
-        Deaths
-    FROM fact_counties_ranked cr
-    JOIN dim_county c
-        ON cr.FIPS = c.FIPS
-    WHERE
-        Date = '20200501';
-    """
-    
-    df = psql.read_sql(sql, conn)
-    c = df.corr()
-    print(c)
+def get_db_conn():
+    conn = sqlite3.connect('stage/covid19.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def load_all_data():
 
-    conn = sqlite3.connect('stage/covid19.db')
-    conn.row_factory = sqlite3.Row
+    conn = get_db_conn()
 
     #### load source data
 
@@ -910,11 +822,3 @@ def load_all_data():
     conn.close()
 
 
-def analysis():
-
-    conn = sqlite3.connect('stage/covid19.db')
-    conn.row_factory = sqlite3.Row
-
-    correlation_analysis(conn)
-
-    conn.close()
