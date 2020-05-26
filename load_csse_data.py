@@ -12,6 +12,8 @@ import sqlite3
 import sys
 import urllib.request
 
+import pandas as pd
+import pandas.io.sql as psql
 
 Path = namedtuple('Path', ['path', 'date'])
 
@@ -148,7 +150,7 @@ def load_csse(conn):
     c.close()
 
 
-def load_county_info(conn):
+def load_county_population(conn):
 
     path = "stage/co-est2019-alldata.csv"
 
@@ -232,6 +234,49 @@ def load_county_info(conn):
     c.execute('''
         CREATE INDEX idx_fips_population ON fips_population (FIPS);
     ''')
+
+    conn.commit()
+
+    c.close()
+
+
+def load_county_acs_vars(conn):
+    """ load county-level variables from ACS """
+
+    # https://api.census.gov/data/2018/acs/acs5/cprofile/variables.html
+
+    path = "stage/county_acs_2018.csv"
+
+    if not os.path.exists(path):
+        print("Downloading county ACS file into stage dir")
+        with urllib.request.urlopen("https://api.census.gov/data/2018/acs/acs5/cprofile?get=GEO_ID,CP03_2014_2018_062E,CP05_2014_2018_018E&for=county:*") as f:
+            data = f.read()
+            with open(path, 'wb') as output:
+                output.write(data)
+
+    print("Loading county vars into database")
+
+    column_names = []
+
+    with codecs.open(path, encoding='latin1') as f:
+        rows = eval(f.read())
+        column_names = rows[0]
+        rows = rows[1:]
+
+    c = conn.cursor()
+
+    c.execute('''
+        DROP TABLE IF EXISTS county_acs;
+    ''')
+
+    # Create table
+    c.execute('''
+        CREATE TABLE county_acs ('''
+            + ",".join([col + " text" for col in column_names]) +
+        ''')
+    ''')
+
+    c.executemany('INSERT INTO county_acs VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
 
     conn.commit()
 
@@ -344,10 +389,17 @@ def load_state_info(conn):
 
     conn.commit()
 
-    c.execute('DROP TABLE IF EXISTS state_population')
+    c.close()
+
+
+def create_dimensional_tables(conn):
+
+    c = conn.cursor()
+
+    c.execute('DROP TABLE IF EXISTS dim_state')
 
     c.execute('''
-        CREATE TABLE state_population
+        CREATE TABLE dim_state
         AS SELECT
             NAME AS State
             ,Abbreviation AS StateAbbrev
@@ -360,19 +412,12 @@ def load_state_info(conn):
 
     conn.commit()
 
-    c.close()
-
-
-def create_counties_ranked(conn):
-
-    c = conn.cursor()
-
-    print("csse_filtered")
+    print("stage_csse_filtered")
 
     c.executescript('''
-        DROP TABLE IF EXISTS csse_filtered;
+        DROP TABLE IF EXISTS stage_csse_filtered;
 
-        CREATE TABLE csse_filtered (
+        CREATE TABLE stage_csse_filtered (
             Date text,
             FIPS text,
             Admin2 text,
@@ -395,6 +440,8 @@ def create_counties_ranked(conn):
             from csse
             where
                 Country_Region = 'US'
+                AND FIPS <> '00078' -- duplicate for Virgin Islands
+                AND FIPS <> '00066' -- duplicate for Guam
                 AND LENGTH(FIPS) > 0
             group by FIPS
             Having SUM(Confirmed > 0) or SUM(Deaths) > 0 or SUM(Recovered) > 0 or sum(active) > 0
@@ -406,124 +453,174 @@ def create_counties_ranked(conn):
             JOIN RegionsWithData t2
                 ON t1.FIPS = t2.FIPS
         )
-        INSERT INTO csse_filtered
+        INSERT INTO stage_csse_filtered
         SELECT *
         FROM Filtered;
 
-        CREATE INDEX idx_csse_filtered ON csse_filtered (FIPS, Date);
+        CREATE INDEX idx_stage_csse_filtered ON stage_csse_filtered (FIPS, Date);
     ''')
 
-    print("WithPopulation")
+    c.executescript('''
+        DROP TABLE IF EXISTS dim_county;
+
+        CREATE TABLE dim_county (
+            FIPS text,
+            County text,
+            State text,
+            Lat text,
+            Long_ text,
+            Combined_Key text,
+            ShouldHaveFIPS int,
+            Population int,
+            MedianIncome int,
+            MedianAge float
+        );
+
+        CREATE UNIQUE INDEX idx_dim_county ON dim_county (County, State);
+    
+        WITH MostRecent AS (
+            SELECT
+                *
+                ,ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date DESC) AS DateRank
+            FROM stage_csse_filtered
+        )
+        INSERT INTO dim_county (
+            FIPS,
+            County,
+            State,
+            Lat,
+            Long_,
+            Combined_Key,
+            ShouldHaveFIPS,
+            Population,
+            MedianIncome,
+            MedianAge
+        )
+        SELECT DISTINCT
+            t1.FIPS,
+            Admin2 AS County,
+            Province_State AS State,
+            Lat,
+            Long_,
+            Combined_Key,
+            ShouldHaveFIPS,
+            Population,
+            CP03_2014_2018_062E AS MedianIncome,
+            CP05_2014_2018_018E AS MedianAge
+        FROM MostRecent t1
+        LEFT JOIN fips_population t2
+            ON t1.FIPS = t2.FIPS
+        LEFT JOIN county_acs t3
+            ON t1.FIPS = t3.state || t3.county
+        WHERE t1.DateRank = 1
+    ''')
+
+    print("stage_with_population")
 
     c.executescript('''
-        DROP TABLE IF EXISTS WithPopulation;
+        DROP TABLE IF EXISTS stage_with_population;
 
-        CREATE TABLE WithPopulation AS
+        CREATE TABLE stage_with_population AS
             SELECT
                 t1.*
                 ,Population
                 ,CAST(Confirmed AS REAL) / (CAST(Population AS REAL) / 1000000) as ConfirmedPer1M
                 ,CAST(Deaths AS REAL) / (CAST(Population AS REAL) / 1000000) as DeathsPer1M
                 ,ROW_NUMBER() OVER (PARTITION BY t1.FIPS ORDER BY Date DESC) As DateRank
-            FROM csse_filtered t1
-            LEFT JOIN fips_population t2
+            FROM stage_csse_filtered t1
+            LEFT JOIN dim_county t2
                 ON t1.FIPS = t2.FIPS;
 
-        CREATE INDEX idx_WithPopulation ON WithPopulation (FIPS, DateRank);
+        CREATE INDEX idx_stage_with_population ON stage_with_population (FIPS, DateRank);
     ''')
 
-    print("WithDeltas")
+    print("stage_with_deltas")
 
     c.executescript('''
-        DROP TABLE IF EXISTS WithDeltas;
+        DROP TABLE IF EXISTS stage_with_deltas;
 
-        CREATE TABLE WithDeltas as
+        CREATE TABLE stage_with_deltas as
             select
                 t1.*
                 ,t1.ConfirmedPer1M - t2.ConfirmedPer1M as DeltaConfirmedPer1M
                 ,t1.DeathsPer1M - t2.DeathsPer1M as DeltaDeathsPer1M
                 ,(t1.ConfirmedPer1M - t3.ConfirmedPer1M) / 5.0 as Avg5DaysConfirmedPer1M
                 ,(t1.DeathsPer1M - t3.DeathsPer1M) / 5.0 as Avg5DaysDeathsPer1M
-            from WithPopulation t1
-            left join WithPopulation t2 
+            from stage_with_population t1
+            left join stage_with_population t2 
                 on t1.fips = t2.fips
                 and t1.DateRank = t2.DateRank - 1
-            left join WithPopulation t3
+            left join stage_with_population t3
                 on t1.fips = t3.fips
                 and t1.DateRank = t3.DateRank - 5
         ;
 
-        CREATE INDEX idx_WithDeltas ON WithDeltas (FIPS);
+        CREATE INDEX idx_stage_with_deltas ON stage_with_deltas (FIPS);
     ''')
 
-    print("Latest")
+    print("stage_latest")
 
     c.executescript('''
-        DROP TABLE IF EXISTS Latest;
+        DROP TABLE IF EXISTS stage_latest;
 
-        CREATE TABLE Latest AS
+        CREATE TABLE stage_latest AS
             SELECT
                 FIPS
                 ,MAX(ConfirmedPer1M) AS LatestConfirmedPer1M
                 ,MAX(DeathsPer1M) AS LatestDeathsPer1M
-            FROM WithDeltas
+            FROM stage_with_deltas
             WHERE DateRank = 1
             GROUP BY FIPS;
 
-        CREATE INDEX idx_Latest ON Latest (FIPS);
+        CREATE INDEX idx_stage_latest ON stage_latest (FIPS);
     ''')
 
-    print("WithLatest")
+    print("stage_with_latest")
 
     c.executescript('''
-        DROP TABLE IF EXISTS WithLatest;
+        DROP TABLE IF EXISTS stage_with_latest;
 
-        CREATE TABLE WithLatest AS
+        CREATE TABLE stage_with_latest AS
             SELECT
                 t1.*
                 ,t2.LatestConfirmedPer1M
                 ,t2.LatestDeathsPer1M
-            FROM WithDeltas t1
-            LEFT JOIN Latest t2
+            FROM stage_with_deltas t1
+            LEFT JOIN stage_latest t2
                 ON t1.FIPS = t2.FIPS;
 
-        CREATE INDEX idx_WithLatest ON WithLatest (FIPS, LatestConfirmedPer1M, LatestDeathsPer1M);
+        CREATE INDEX idx_stage_with_latest ON stage_with_latest (FIPS, LatestConfirmedPer1M, LatestDeathsPer1M);
     ''')
 
-    print("WithRank")
+    print("stage_with_rank")
 
     c.executescript('''
-        DROP TABLE IF EXISTS WithRank;
+        DROP TABLE IF EXISTS stage_with_rank;
 
-        CREATE TABLE WithRank AS
+        CREATE TABLE stage_with_rank AS
             SELECT
                 FIPS
                 ,LatestConfirmedPer1M
                 ,LatestDeathsPer1M
                 ,ROW_NUMBER() OVER (ORDER BY LatestConfirmedPer1M DESC) As ConfirmedRank
                 ,ROW_NUMBER() OVER (ORDER BY LatestDeathsPer1M DESC) As DeathRank
-            FROM WithLatest
+            FROM stage_with_latest
             GROUP BY FIPS, LatestConfirmedPer1M, LatestDeathsPer1M;
 
-        CREATE INDEX idx_WithRank ON WithRank (FIPS, ConfirmedRank);
+        CREATE INDEX idx_stage_with_rank ON stage_with_rank (FIPS, ConfirmedRank);
     ''')
 
 
-    print("counties_ranked")
+    print("fact_counties_ranked")
 
     c.executescript('''
-        DROP TABLE IF EXISTS counties_ranked;
+        DROP TABLE IF EXISTS fact_counties_ranked;
 
-        CREATE TABLE counties_ranked (
+        CREATE TABLE fact_counties_ranked (
             Date text,
             FIPS text,
-            Admin2 text,
-            Province_State text,
-            StateAbbrev text,
-            Country_Region text,
             Confirmed int,
             Deaths int,
-            Population int,
             ConfirmedPer1M real,
             DeathsPer1M real,
             DeltaConfirmedPer1M real,
@@ -534,17 +631,12 @@ def create_counties_ranked(conn):
             DeathRank int
         );
 
-        INSERT INTO counties_ranked
+        INSERT INTO fact_counties_ranked
         SELECT
             Date
             ,t1.FIPS
-            ,Admin2
-            ,Province_State
-            ,Abbreviation as StateAbbrev
-            ,Country_Region
             ,Confirmed
             ,Deaths
-            ,Population
             ,ConfirmedPer1M
             ,DeathsPer1M
             ,DeltaConfirmedPer1M
@@ -553,17 +645,23 @@ def create_counties_ranked(conn):
             ,Avg5DaysDeathsPer1M
             ,ConfirmedRank
             ,DeathRank
-        FROM WithLatest t1
-        LEFT JOIN WithRank t2
+        FROM stage_with_latest t1
+        LEFT JOIN stage_with_rank t2
             ON t1.FIPS = t2.FIPS
-        LEFT JOIN state_abbreviations t3
-            ON t1.Province_State = t3.State
         ORDER BY ConfirmedRank;
 
-        CREATE INDEX idx_counties_ranked ON counties_ranked (FIPS, Date);
+        CREATE INDEX idx_fact_counties_ranked ON fact_counties_ranked (FIPS, Date);
 
     ''')
 
+    c.executescript('''
+        DROP TABLE stage_csse_filtered;
+        DROP TABLE stage_with_population;
+        DROP TABLE stage_with_deltas;
+        DROP TABLE stage_latest;
+        DROP TABLE stage_with_latest;
+        DROP TABLE stage_with_rank;
+    ''')
     conn.commit()
 
     c.close()
@@ -578,26 +676,59 @@ def row_to_dict(row):
 
 def export_counties_ranked(conn):
 
-    print("exporting counties_ranked")
+    print("exporting output_counties_ranked")
 
     c = conn.cursor()
 
+    c.executescript('''
+        DROP VIEW IF EXISTS output_counties_ranked;
+
+        CREATE VIEW output_counties_ranked AS
+        SELECT
+            -- TODO: don't mangle names here; this change needs to be coordinated with JS
+            Date,
+            c.FIPS,
+            County AS Admin2,
+            c.State AS Province_State,
+            StateAbbrev AS StateAbbrev,
+            'US' AS Country_Region,
+            Confirmed,
+            Deaths,
+            c.Population,
+            ConfirmedPer1M,
+            DeathsPer1M,
+            DeltaConfirmedPer1M,
+            DeltaDeathsPer1M,
+            Avg5DaysConfirmedPer1M,
+            Avg5DaysDeathsPer1M,
+            ConfirmedRank,
+            DeathRank
+        FROM fact_counties_ranked cr
+        JOIN dim_county c
+            ON cr.FIPS = c.FIPS
+        JOIN dim_state s
+            ON c.State = s.State
+    ''')
+
     c.execute('''
-        SELECT * FROM counties_ranked ORDER BY FIPS, Date;
+        SELECT
+            *
+        FROM output_counties_ranked
+        ORDER BY FIPS, Date;
     ''')
 
     rows = c.fetchall()
 
-    # with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
-    #     for column in rows[0].keys():
-    #         f.write(column)
-    #         f.write("\t")
-    #     f.write("\n")
-    #     for row in rows[1:]:
-    #         for value in row:
-    #             f.write(str(value))
-    #             f.write("\t")
-    #         f.write("\n")
+    with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
+        for column in rows[0].keys():
+            f.write(column)
+            f.write("\t")
+        f.write("\n")
+        for row in rows[1:]:
+            for value in row:
+                f.write(str(value))
+                f.write("\t")
+            f.write("\n")
 
     with codecs.open("data/counties_ranked.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
@@ -606,15 +737,15 @@ def export_counties_ranked(conn):
 
     c.executescript('''
 
-        DROP TABLE IF EXISTS counties_ranked_by_date;
+        DROP TABLE IF EXISTS output_counties_ranked_by_date;
 
-        CREATE TABLE counties_ranked_by_date AS
+        CREATE TABLE output_counties_ranked_by_date AS
             select
                 *,
                 ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date DESC) as rank_latest
-            from counties_ranked;
+            from output_counties_ranked;
 
-        CREATE INDEX idx_counties_ranked_by_date ON counties_ranked_by_date(rank_latest, StateAbbrev, Admin2);
+        CREATE INDEX idx_output_counties_ranked_by_date ON output_counties_ranked_by_date(rank_latest, StateAbbrev, Admin2);
     ''')
 
     c.execute('''
@@ -631,7 +762,7 @@ def export_counties_ranked(conn):
             ROUND(DeltaDeathsPer1M, 3) AS DeltaDeathsPer1M,
             ROUND(Avg5DaysConfirmedPer1M, 3) AS Avg5DaysConfirmedPer1M,
             ROUND(Avg5DaysDeathsPer1M, 3) AS Avg5DaysDeathsPer1M
-        FROM counties_ranked_by_date
+        FROM output_counties_ranked_by_date
         WHERE
             rank_latest = 1
             AND state is not null
@@ -651,7 +782,8 @@ def export_state_info(conn):
     c = conn.cursor()
 
     c.execute('''
-        SELECT * FROM state_population;
+        SELECT *
+        FROM dim_state;
     ''')
 
     rows = c.fetchall()
@@ -660,17 +792,129 @@ def export_state_info(conn):
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
 
-conn = sqlite3.connect('stage/covid19.db')
-conn.row_factory = sqlite3.Row
+def correlation_analysis(conn):
 
-load_csse(conn)
-load_county_info(conn)
+    # exploratory
 
-load_state_info(conn)
-export_state_info(conn)
+    sql = """
+    SELECT
+        Deaths,
+        MedianAge
+    FROM fact_counties_ranked cr
+    JOIN dim_county c
+        ON cr.FIPS = c.FIPS
+    WHERE
+        Date = '20200501'
+        AND MedianAge > 0
+        AND Deaths >= 0;
+    """
 
-create_counties_ranked(conn)
-export_counties_ranked(conn)
+    df = psql.read_sql(sql, conn)
+    c = df.corr()
+    print(c)
 
-conn.close()
+    sql = """
+    SELECT
+        Confirmed,
+        MedianIncome
+    FROM fact_counties_ranked cr
+    JOIN dim_county c
+        ON cr.FIPS = c.FIPS
+    WHERE
+        Date = '20200501'
+        AND MedianIncome > 0
+        AND Confirmed >= 0;
+    """
 
+    df = psql.read_sql(sql, conn)
+    c = df.corr()
+    print(c)
+    
+    sql = """
+    SELECT
+        ConfirmedPer1M,
+        MedianIncome
+    FROM fact_counties_ranked cr
+    JOIN dim_county c
+        ON cr.FIPS = c.FIPS
+    WHERE
+        Date = '20200501'
+        AND MedianIncome > 0
+        AND ConfirmedPer1M >= 0;
+    """
+
+    df = psql.read_sql(sql, conn)
+    c = df.corr()
+    print(c)
+
+
+    sql = """
+    SELECT
+        Confirmed,
+        Population
+    FROM fact_counties_ranked cr
+    JOIN dim_county c
+        ON cr.FIPS = c.FIPS
+    WHERE
+        Date = '20200501'
+        AND Population > 0
+        AND Confirmed >= 0;
+    """
+    
+    df = psql.read_sql(sql, conn)
+    c = df.corr()
+    print(c)
+
+
+    sql = """
+    SELECT
+        Confirmed,
+        Deaths
+    FROM fact_counties_ranked cr
+    JOIN dim_county c
+        ON cr.FIPS = c.FIPS
+    WHERE
+        Date = '20200501';
+    """
+    
+    df = psql.read_sql(sql, conn)
+    c = df.corr()
+    print(c)
+
+
+def load_all_data():
+
+    conn = sqlite3.connect('stage/covid19.db')
+    conn.row_factory = sqlite3.Row
+
+    #### load source data
+
+    load_csse(conn)
+
+    load_county_population(conn)
+
+    load_county_acs_vars(conn)
+
+    load_state_info(conn)
+
+    #### transform into dim/fact
+
+    create_dimensional_tables(conn)
+
+    #### exports
+
+    export_state_info(conn)
+
+    export_counties_ranked(conn)
+
+    conn.close()
+
+
+def analysis():
+
+    conn = sqlite3.connect('stage/covid19.db')
+    conn.row_factory = sqlite3.Row
+
+    correlation_analysis(conn)
+
+    conn.close()
