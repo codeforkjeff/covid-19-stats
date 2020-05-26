@@ -8,3 +8,11 @@ To view them, go here:
 https://codeforkjeff.github.io/covid-19-stats/covid-19-stats.html
 
 https://codeforkjeff.github.io/covid-19-stats/covid-19-tables.html
+
+# Running this
+
+Set up an environment using `requirements.txt`
+
+```
+python -c "from covid19stats import *; load_all_data();"
+```
