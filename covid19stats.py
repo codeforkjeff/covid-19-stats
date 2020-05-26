@@ -449,10 +449,36 @@ def create_dimensional_tables(conn):
             FROM csse t1
             JOIN RegionsWithData t2
                 ON t1.FIPS = t2.FIPS
+            WHERE ShouldHaveFIPS = 1
+        )
+        ,Deduped AS (
+            -- there's duplication for the same FIPS and Date;
+            -- for some cases, it looks like counts got spread out across 2 rows;
+            -- in other cases, it looks like there are rows where values are 0.
+            -- for simplicity, just pick the row with higher numbers
+            SELECT
+                *
+                ,ROW_NUMBER() OVER (PARTITION BY FIPS, Date ORDER BY Confirmed DESC, Deaths DESC) AS RN
+            FROM Filtered
         )
         INSERT INTO stage_csse_filtered
-        SELECT *
-        FROM Filtered;
+        SELECT
+            Date,
+            FIPS,
+            Admin2,
+            Province_State,
+            Country_Region,
+            Last_Update,
+            Lat,
+            Long_,
+            Confirmed,
+            Deaths,
+            Recovered,
+            Active,
+            Combined_Key,
+            ShouldHaveFIPS
+        FROM Deduped
+        WHERE RN = 1;
 
         CREATE INDEX idx_stage_csse_filtered ON stage_csse_filtered (FIPS, Date);
     ''')
@@ -467,7 +493,6 @@ def create_dimensional_tables(conn):
             Lat text,
             Long_ text,
             Combined_Key text,
-            ShouldHaveFIPS int,
             Population int,
             MedianIncome int,
             MedianAge float
@@ -488,7 +513,6 @@ def create_dimensional_tables(conn):
             Lat,
             Long_,
             Combined_Key,
-            ShouldHaveFIPS,
             Population,
             MedianIncome,
             MedianAge
@@ -500,7 +524,6 @@ def create_dimensional_tables(conn):
             Lat,
             Long_,
             Combined_Key,
-            ShouldHaveFIPS,
             Population,
             CP03_2014_2018_062E AS MedianIncome,
             CP05_2014_2018_018E AS MedianAge
@@ -647,7 +670,7 @@ def create_dimensional_tables(conn):
             ON t1.FIPS = t2.FIPS
         ORDER BY ConfirmedRank;
 
-        CREATE INDEX idx_fact_counties_ranked ON fact_counties_ranked (FIPS, Date);
+        CREATE UNIQUE INDEX idx_fact_counties_ranked ON fact_counties_ranked (FIPS, Date);
 
     ''')
 
@@ -763,7 +786,7 @@ def export_counties_ranked(conn):
         WHERE
             rank_latest = 1
             AND state is not null
-            AND Admin2 <> 'Unassigned'
+            AND lower(Admin2) <> 'unassigned'
             AND Admin2 not like 'Out of%'
         ORDER BY DeltaDeathsPer1M DESC;
     ''')
