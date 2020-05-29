@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>COVID-19 Progress in U.S. States</title>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="COVID-19 Rates of Change in U.S. Counties">
+    <meta property="og:description" content="COVID-19 Rates of Change in U.S. Counties">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
+
+    <style>
+      table.dataTable tbody td {
+        text-align: right;
+      }
+      table.dataTable tbody td:nth-child(1) {
+        text-align: center;
+      }
+      table.dataTable {
+        font-family: Arial;
+        font-size: 13px;
+      }
+      /*
+      table.dataTable th {
+        white-space:nowrap;
+      }
+      */
+      table.dataTable tr.heading-row-1 th:nth-child(2) {
+        font-size: 17px;
+        border-left: 1px solid black;
+      }
+      table.dataTable tr.heading-row-1 th:nth-child(3) {
+        font-size: 17px;
+        border-left: 1px solid black;
+      }
+      table.dataTable tr.heading-row-2 th:nth-child(2) {
+        border-left: 1px solid black;
+      }
+      table.dataTable tr.heading-row-2 th:nth-child(10) {
+        border-left: 1px solid black;
+      }
+      table.dataTable tr.heading-row-2 th:nth-child(12) {
+        border-left: 1px solid black;
+      }
+      table.dataTable td:nth-child(2),td:nth-child(10) {
+        border-left: 1px solid black;
+      }
+      table.dataTable td:nth-child(2),td:nth-child(12) {
+        border-left: 1px solid black;
+      }
+      .sparkline {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+      }
+    </style>
+
+    <script>
+        $(document).ready(function() {
+            
+            var table;
+            var sparkline_positive_data = {};
+            var sparkline_death_data = {};
+
+            function comparator(a,b) {
+                return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
+            }
+
+            function createSparkline(ctx, data) {
+              return new Chart(ctx, {
+                type: 'line',
+                data: {
+                  labels: new Array(data.length),
+                  datasets: [
+                    {
+                      data: data
+                    }
+                  ]
+                },
+                options: {
+                  responsive: false,
+                  legend: {
+                    display: false
+                  },
+                  elements: {
+                    line: {
+                      borderColor: '#000000',
+                      borderWidth: 1
+                    },
+                    point: {
+                      radius: 0
+                    }
+                  },
+                  tooltips: {
+                    enabled: true
+                  },
+                  scales: {
+                    yAxes: [
+                      {
+                        display: false,
+                        ticks: {
+                          // relative to 0, otherwise it's confusing
+                          min: 0
+                        }
+                      }
+                    ],
+                    xAxes: [
+                      {
+                        display: false
+                      },
+                    ]
+                  }
+                }
+              });
+            }
+
+            function lastN(a, n) {
+              return a.slice(a.length - n, a.length);
+            }
+
+            function round(x, places) {
+              return x.toFixed(places);
+            }
+           
+            function initSparklines() {
+              var states = Object.keys(sparkline_positive_data);
+              for(var i = 0; i < states.length; i++) {
+                var state = states[i];
+                var pos = sparkline_positive_data[state];
+                if(document.getElementById('sparkline-positives-' + state)) {
+                  var ctx = document.getElementById('sparkline-positives-' + state).getContext('2d');
+                  var chart = createSparkline(ctx, pos);
+                } else {
+                  console.log("Warning: couldn't find a canvas element for " + state);
+                }
+
+                var death = sparkline_death_data[state];
+                if(document.getElementById('sparkline-deaths-' + state)) {
+                  var ctx = document.getElementById('sparkline-deaths-' + state).getContext('2d');
+                  var chart = createSparkline(ctx, death);
+                } else {
+                  console.log("Warning: couldn't find a canvas element for " + state);
+                }
+              }
+            }
+
+            //$.ajax("daily.json").done(function(data) {
+            $.ajax("https://covidtracking.com/api/v1/states/daily.json").done(function(data) {
+              
+              data = data.filter(row => row.state != 'AS');
+
+              data.sort(comparator);
+              
+              var date = data[data.length-1].date.toString();
+              date = date.substring(0,4) + "/" + date.substring(4,6) + "/" + date.substring(6,8);
+              $("#heading").html("Data As of " + date);
+
+              var states_set = new Set(data.map(row => row.state));
+              var states = Array.from(states_set.values());
+
+              var table_rows = states.map(state => {
+                var single_state = data
+                  .filter(row => { return row.state == state } );
+
+                var last5 = lastN(single_state, 5);
+                var last14 = lastN(single_state, 14);
+
+                sparkline_positive_data[state] = last14.map(row => row.positiveIncrease);
+                sparkline_death_data[state] = last14.map(row => row.deathIncrease);
+
+                var latest = single_state[single_state.length - 1];
+
+                return [
+                  // positive cases
+                  latest.state,
+                  latest.positive,
+                  latest.positiveIncrease,
+                  latest.positiveIncrease / (latest.positive - latest.positiveIncrease),
+                  last5.reduce((acc, item) => acc + item.positiveIncrease, 0) / 5,
+                  last5.reduce((acc, item) => acc + (item.positiveIncrease / (item.positive - item.positiveIncrease)), 0) / 5,
+                  last14.reduce((acc, item) => acc + item.positiveIncrease, 0) / 14,
+                  last14.reduce((acc, item) => acc + (item.positiveIncrease / (item.positive - item.positiveIncrease)), 0) / 14,
+                  "<canvas class='sparkline' id='sparkline-positives-" + latest.state + "' width='125' height='60'></canvas>",
+                  last5.reduce((acc, item) => acc + (item.positive / (item.totalTestResults)), 0) / 5,
+                  last14.reduce((acc, item) => acc + (item.positive / (item.totalTestResults)), 0) / 14,
+                  // deaths
+                  latest.death,
+                  latest.deathIncrease,
+                  latest.deathIncrease / (latest.death - latest.deathIncrease),
+                  last5.reduce((acc, item) => acc + item.deathIncrease, 0) / 5,
+                  last5.reduce((acc, item) => acc + (item.deathIncrease / (item.death - item.deathIncrease)), 0) / 5,
+                  last14.reduce((acc, item) => acc + item.deathIncrease, 0) / 14,
+                  last14.reduce((acc, item) => acc + (item.deathIncrease / (item.death - item.deathIncrease)), 0) / 14,
+                  "<canvas class='sparkline' id='sparkline-deaths-" + latest.state + "' width='125' height='60'></canvas>"
+                ];
+              });
+
+              table = $('#states')
+                .on('draw.dt', initSparklines)
+                .DataTable({
+                  data: table_rows,
+                  paging: false,
+                  searching: false,
+                  columnDefs: [
+                    {
+                      render: function(data, type, row) {
+                          return round(data, 2);
+                      },
+                      targets: [ 4, 6, 14, 16 ]
+                    },
+                    {
+                      render: function(data, type, row) {
+                          return (round(data, 4) * 100).toFixed(2) + '%';
+                      },
+                      targets: [ 3, 5, 7, 9, 10, 13, 15, 17 ]
+                    },
+                  ]
+                });
+
+              table
+                .column( '2:visible' )
+                .order( 'desc' )
+                .draw();
+            })
+            .fail(function() {
+                alert( "error" );
+            });
+
+         });
+
+    </script>
+
+</head>
+<body>
+
+<h2 id="heading"></h2>
+
+  <p>Source: <a href="https://covidtracking.com/">The COVID Tracking Project</a>
+
+  <table id="states" class="display cell-border" style="width: 100%">
+    <thead>
+      <tr class="heading-row-1">
+        <th></th>
+        <th colspan="10">Positive Cases</th>
+        <th colspan="10">Deaths</th>
+      </tr>
+      <tr class="heading-row-2">
+        <th>State
+        </th>
+        <th>Total<br/>Positive Cases<br/>to Date
+        </th>
+        <th>New<br/>Positive<br/>Cases,<br/>Last Day
+        </th>
+        <th>% Change,<br/>Last Day
+        </th>
+        <th>Avg Increase,<br/>Last 5 Days
+        </th>
+        <th>Avg % Increase,<br/>Last 5 Days
+        </th>
+        <th>Avg Increase,<br/>Last 14 Days
+        </th>
+        <th>Avg % Increase,<br/>Last 14 Days
+        </th>
+        <th>Positive Cases,<br/>Last 14 days
+        </th>
+        <th>Avg Positivity Rate,<br/>Last 5 Days
+        </th>
+        <th>Avg Positivity Rate,<br/>Last 14 Days
+        </th>
+        <th>Total<br/>Deaths<br/>to Date
+        </th>
+        <th>New<br/>Deaths,<br/>Last Day
+        </th>
+        <th>% Change,<br/>Last Day
+        </th>
+        <th>Avg Increase,<br/>Last 5 Days
+        </th>
+        <th>Avg % Increase,<br/>Last 5 Days
+        </th>
+        <th>Avg Increase,<br/>Last 14 Days
+        </th>
+        <th>Avg % Increase,<br/>Last 14 Days
+        </th>
+        <th>Deaths,<br/>Last 14 days
+        </th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+    </tbody>
+  </table>
+
+</body>
+</html>
