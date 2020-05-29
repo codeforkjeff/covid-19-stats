@@ -36,19 +36,10 @@
         font-size: 17px;
         border-left: 1px solid black;
       }
-      table.dataTable tr.heading-row-2 th:nth-child(2) {
+      table.dataTable tr.heading-row-2 th:nth-child(2),th:nth-child(5),th:nth-child(7),th:nth-child(9),th:nth-child(12) {
         border-left: 1px solid black;
       }
-      table.dataTable tr.heading-row-2 th:nth-child(10) {
-        border-left: 1px solid black;
-      }
-      table.dataTable tr.heading-row-2 th:nth-child(12) {
-        border-left: 1px solid black;
-      }
-      table.dataTable td:nth-child(2),td:nth-child(10) {
-        border-left: 1px solid black;
-      }
-      table.dataTable td:nth-child(2),td:nth-child(12) {
+      table.dataTable td:nth-child(2),td:nth-child(5),td:nth-child(7),td:nth-child(9),td:nth-child(12) {
         border-left: 1px solid black;
       }
       .sparkline {
@@ -62,8 +53,9 @@
         $(document).ready(function() {
             
             var table;
-            var sparkline_positive_data = {};
-            var sparkline_death_data = {};
+            var sparkline_moving_positive_data = {};
+            var sparkline_moving_positivity_data = {};
+            var sparkline_moving_death_data = {};
 
             function comparator(a,b) {
                 return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
@@ -121,15 +113,31 @@
               return a.slice(a.length - n, a.length);
             }
 
+            function moving(window_size, data, calc_fn) {
+              // last 30 days + window_size before that to get the moving avg
+              var sliced = lastN(data, 30 + window_size);
+              var output = [];
+              for(var i = sliced.length - 30; i < sliced.length; i++) {
+                var window_data = sliced.slice(i - window_size, i);
+                var avg = window_data.reduce((acc, item) => acc + calc_fn(item), 0) / window_size;
+                output.push(avg);
+              }
+              return output;
+            }
+
             function round(x, places) {
               return x.toFixed(places);
             }
+
+            function changeFirstAndLast(data) {
+              return data[data.length - 1] - data[0];
+            }
            
             function initSparklines() {
-              var states = Object.keys(sparkline_positive_data);
+              var states = Object.keys(sparkline_moving_positive_data);
               for(var i = 0; i < states.length; i++) {
                 var state = states[i];
-                var pos = sparkline_positive_data[state];
+                var pos = sparkline_moving_positive_data[state];
                 if(document.getElementById('sparkline-positives-' + state)) {
                   var ctx = document.getElementById('sparkline-positives-' + state).getContext('2d');
                   var chart = createSparkline(ctx, pos);
@@ -137,7 +145,15 @@
                   console.log("Warning: couldn't find a canvas element for " + state);
                 }
 
-                var death = sparkline_death_data[state];
+                var posi = sparkline_moving_positivity_data[state];
+                if(document.getElementById('sparkline-positivity-' + state)) {
+                  var ctx = document.getElementById('sparkline-positivity-' + state).getContext('2d');
+                  var chart = createSparkline(ctx, posi);
+                } else {
+                  console.log("Warning: couldn't find a canvas element for " + state);
+                }
+
+                var death = sparkline_moving_death_data[state];
                 if(document.getElementById('sparkline-deaths-' + state)) {
                   var ctx = document.getElementById('sparkline-deaths-' + state).getContext('2d');
                   var chart = createSparkline(ctx, death);
@@ -168,10 +184,20 @@
                 var last5 = lastN(single_state, 5);
                 var last14 = lastN(single_state, 14);
 
-                sparkline_positive_data[state] = last14.map(row => row.positiveIncrease);
-                sparkline_death_data[state] = last14.map(row => row.deathIncrease);
+                var window_size = 7;
+
+                sparkline_moving_positive_data[state] =
+                  moving(window_size, single_state, item => item.positiveIncrease);
+                sparkline_moving_positivity_data[state] =
+                  moving(window_size, single_state, item => item.positive / item.totalTestResults);
+                sparkline_moving_death_data[state] =
+                  moving(window_size, single_state, item => item.deathIncrease);
 
                 var latest = single_state[single_state.length - 1];
+
+                var change_positive = changeFirstAndLast(sparkline_moving_positive_data[state]);
+                var change_positivity = changeFirstAndLast(sparkline_moving_positivity_data[state]);
+                var change_death = changeFirstAndLast(sparkline_moving_death_data[state]);
 
                 return [
                   // positive cases
@@ -179,22 +205,32 @@
                   latest.positive,
                   latest.positiveIncrease,
                   latest.positiveIncrease / (latest.positive - latest.positiveIncrease),
+                  /*
                   last5.reduce((acc, item) => acc + item.positiveIncrease, 0) / 5,
                   last5.reduce((acc, item) => acc + (item.positiveIncrease / (item.positive - item.positiveIncrease)), 0) / 5,
                   last14.reduce((acc, item) => acc + item.positiveIncrease, 0) / 14,
                   last14.reduce((acc, item) => acc + (item.positiveIncrease / (item.positive - item.positiveIncrease)), 0) / 14,
+                  */
                   "<canvas class='sparkline' id='sparkline-positives-" + latest.state + "' width='125' height='60'></canvas>",
+                  change_positive,
+                  "<canvas class='sparkline' id='sparkline-positivity-" + latest.state + "' width='125' height='60'></canvas>",
+                  change_positivity,
+                  /*
                   last5.reduce((acc, item) => acc + (item.positive / (item.totalTestResults)), 0) / 5,
                   last14.reduce((acc, item) => acc + (item.positive / (item.totalTestResults)), 0) / 14,
+                  */
                   // deaths
                   latest.death,
                   latest.deathIncrease,
                   latest.deathIncrease / (latest.death - latest.deathIncrease),
+                  /*
                   last5.reduce((acc, item) => acc + item.deathIncrease, 0) / 5,
                   last5.reduce((acc, item) => acc + (item.deathIncrease / (item.death - item.deathIncrease)), 0) / 5,
                   last14.reduce((acc, item) => acc + item.deathIncrease, 0) / 14,
                   last14.reduce((acc, item) => acc + (item.deathIncrease / (item.death - item.deathIncrease)), 0) / 14,
-                  "<canvas class='sparkline' id='sparkline-deaths-" + latest.state + "' width='125' height='60'></canvas>"
+                  */
+                  "<canvas class='sparkline' id='sparkline-deaths-" + latest.state + "' width='125' height='60'></canvas>",
+                  change_death
                 ];
               });
 
@@ -207,21 +243,29 @@
                   columnDefs: [
                     {
                       render: function(data, type, row) {
-                          return round(data, 2);
+                          var x = round(data, 2);
+                          if(x > 0) {
+                            x =  "+" + x.toString();
+                          }
+                          return x;
                       },
-                      targets: [ 4, 6, 14, 16 ]
+                      targets: [ 5, 12 ]
                     },
                     {
                       render: function(data, type, row) {
-                          return (round(data, 4) * 100).toFixed(2) + '%';
+                          var x = (round(data, 4) * 100).toFixed(2);
+                          if(x > 0) {
+                            x =  "+" + x.toString();
+                          }
+                          return x.toString() + '%';
                       },
-                      targets: [ 3, 5, 7, 9, 10, 13, 15, 17 ]
+                      targets: [ 3, 7, 10 ]
                     },
                   ]
                 });
 
               table
-                .column( '2:visible' )
+                .column( '5:visible' )
                 .order( 'desc' )
                 .draw();
             })
@@ -244,8 +288,8 @@
     <thead>
       <tr class="heading-row-1">
         <th></th>
-        <th colspan="10">Positive Cases</th>
-        <th colspan="10">Deaths</th>
+        <th colspan="7">Positive Cases</th>
+        <th colspan="5">Deaths</th>
       </tr>
       <tr class="heading-row-2">
         <th>State
@@ -256,6 +300,7 @@
         </th>
         <th>% Change,<br/>Last Day
         </th>
+        <!--
         <th>Avg Increase,<br/>Last 5 Days
         </th>
         <th>Avg % Increase,<br/>Last 5 Days
@@ -264,18 +309,28 @@
         </th>
         <th>Avg % Increase,<br/>Last 14 Days
         </th>
-        <th>Positive Cases,<br/>Last 14 days
+      -->
+        <th>Moving 7-day Avg<br/>of Positive Cases,<br/>Last 30 days
         </th>
+        <th>Overall Change<!-- in <br/>Moving 7-day Avg<br/>of Positive Cases<br/> -->
+        </th>
+        <th>Moving 7-day Avg<br/>of Positivity Rate,<br/>Last 30 days
+        </th>
+        <th>Overall Change<!-- in <br/>Moving 7-day Avg<br/>of Positivity Rate<br/> -->
+        </th>
+        <!--
         <th>Avg Positivity Rate,<br/>Last 5 Days
         </th>
         <th>Avg Positivity Rate,<br/>Last 14 Days
         </th>
+      -->
         <th>Total<br/>Deaths<br/>to Date
         </th>
         <th>New<br/>Deaths,<br/>Last Day
         </th>
         <th>% Change,<br/>Last Day
         </th>
+        <!--
         <th>Avg Increase,<br/>Last 5 Days
         </th>
         <th>Avg % Increase,<br/>Last 5 Days
@@ -284,7 +339,10 @@
         </th>
         <th>Avg % Increase,<br/>Last 14 Days
         </th>
-        <th>Deaths,<br/>Last 14 days
+      -->
+        <th>Moving 7-day Avg<br/>of Deaths,<br/>Last 30 days
+        </th>
+        <th>Overall Change
         </th>
       </tr>
     </thead>
