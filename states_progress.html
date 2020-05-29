@@ -36,10 +36,10 @@
         font-size: 17px;
         border-left: 1px solid black;
       }
-      table.dataTable tr.heading-row-2 th:nth-child(2),th:nth-child(5),th:nth-child(7),th:nth-child(9),th:nth-child(12) {
+      table.dataTable tr.heading-row-2 th:nth-child(2),th:nth-child(5),th:nth-child(7),th:nth-child(10),th:nth-child(13) {
         border-left: 1px solid black;
       }
-      table.dataTable td:nth-child(2),td:nth-child(5),td:nth-child(7),td:nth-child(9),td:nth-child(12) {
+      table.dataTable td:nth-child(2),td:nth-child(5),td:nth-child(7),td:nth-child(10),td:nth-child(13) {
         border-left: 1px solid black;
       }
       .sparkline {
@@ -213,6 +213,7 @@
                   */
                   "<canvas class='sparkline' id='sparkline-positives-" + latest.state + "' width='125' height='60'></canvas>",
                   change_positive,
+                  latest.positive / latest.totalTestResults,
                   "<canvas class='sparkline' id='sparkline-positivity-" + latest.state + "' width='125' height='60'></canvas>",
                   change_positivity,
                   /*
@@ -249,7 +250,14 @@
                           }
                           return x;
                       },
-                      targets: [ 5, 12 ]
+                      targets: [ 5, 13 ]
+                    },
+                    {
+                      render: function(data, type, row) {
+                          var x = (round(data, 4) * 100).toFixed(2);
+                          return x.toString() + '%';
+                      },
+                      targets: [ 6 ]
                     },
                     {
                       render: function(data, type, row) {
@@ -259,7 +267,7 @@
                           }
                           return x.toString() + '%';
                       },
-                      targets: [ 3, 7, 10 ]
+                      targets: [ 3, 8, 11 ]
                     },
                   ]
                 });
@@ -288,7 +296,7 @@
     <thead>
       <tr class="heading-row-1">
         <th></th>
-        <th colspan="7">Positive Cases</th>
+        <th colspan="8">Positive Cases</th>
         <th colspan="5">Deaths</th>
       </tr>
       <tr class="heading-row-2">
@@ -312,11 +320,13 @@
       -->
         <th>Moving 7-day Avg<br/>of Positive Cases,<br/>Last 30 days
         </th>
-        <th>Overall Change<!-- in <br/>Moving 7-day Avg<br/>of Positive Cases<br/> -->
+        <th>Overall Change<br/>over 30 days<!-- in <br/>Moving 7-day Avg<br/>of Positive Cases<br/> -->
+        </th>
+        <th>Current<br/>Positivity Rate
         </th>
         <th>Moving 7-day Avg<br/>of Positivity Rate,<br/>Last 30 days
         </th>
-        <th>Overall Change<!-- in <br/>Moving 7-day Avg<br/>of Positivity Rate<br/> -->
+        <th>Overall Change<br/>over 30 days<!-- in <br/>Moving 7-day Avg<br/>of Positivity Rate<br/> -->
         </th>
         <!--
         <th>Avg Positivity Rate,<br/>Last 5 Days
@@ -342,7 +352,7 @@
       -->
         <th>Moving 7-day Avg<br/>of Deaths,<br/>Last 30 days
         </th>
-        <th>Overall Change
+        <th>Overall Change<br/>over 30 days
         </th>
       </tr>
     </thead>
