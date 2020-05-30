@@ -39,10 +39,21 @@
       {
         border-left: 1px solid black;
       }
-      .sparkline {
+      .smalltext
+      {
+        font-size: 11px;
+      }
+      .centered
+      {
         margin-left: auto;
         margin-right: auto;
         display: block;
+      }
+      .left {
+        float: left;
+      }
+      .right {
+        float: right;
       }
       #filters {
         margin-bottom: 1em;
@@ -122,14 +133,24 @@
                   var fips = $(elem).data('fips');
 
                   var data;
-                  if(elem.classList.contains("sparkline-positives")) {
+                  var is_positives = elem.classList.contains("sparkline-positives");
+
+                  if(is_positives) {
                     data = sparkline_moving_positive_data[fips]; 
                   } else {
                     data = sparkline_moving_death_data[fips];
                   }
                   
                   if(data) {
+                    if(is_positives) {
+                      $("#sparkline-positives-start-" + fips).html(round(data[0], 2));
+                      $("#sparkline-positives-end-" + fips).html(round(data[data.length - 1], 2));
+                    } else {
+                      $("#sparkline-deaths-start-" + fips).html(round(data[0], 2));
+                      $("#sparkline-deaths-end-" + fips).html(round(data[data.length - 1], 2));
+                    }
                     var chart = createSparkline(ctx, data);
+
                   } else {
                     console.log("no data found, not making chart")
                   }
@@ -184,12 +205,12 @@
                   row.Confirmed,
                   row.ConfirmedIncrease,
                   row.ConfirmedIncreasePct,
-                  "<canvas class='sparkline sparkline-positives' data-fips='" + row.FIPS + "' id='sparkline-positives-" + row.FIPS + "' width='125' height='60'></canvas>",
+                  "<canvas class='centered sparkline sparkline-positives' data-fips='" + row.FIPS + "' id='sparkline-positives-" + row.FIPS + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positives-start-" + row.FIPS + "'></span><span class='right' id='sparkline-positives-end-" + row.FIPS + "'></span></div>",
                   row.OverallAvg7DayConfirmedIncrease,
                   row.Deaths,
                   row.DeathsIncrease,
                   row.DeathsIncreasePct,
-                  "<canvas class='sparkline sparkline-deaths' data-fips='" + row.FIPS + "' id='sparkline-deaths-" + row.FIPS + "' width='125' height='60'></canvas>",
+                  "<canvas class='centered sparkline sparkline-deaths' data-fips='" + row.FIPS + "' id='sparkline-deaths-" + row.FIPS + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-deaths-start-" + row.FIPS + "'></span><span class='right' id='sparkline-deaths-end-" + row.FIPS + "'></span></div>",
                   row.OverallAvg7DayDeathsIncrease
                 ];
                 return values;
@@ -320,7 +341,7 @@
 
   </form>
 
-  <table id="counties" class="display" style="width: 100%">
+  <table id="counties" class="display cell-border" style="width: 100%">
     <thead>
       <tr class="heading-row-1">
         <th colspan="3"></th>
