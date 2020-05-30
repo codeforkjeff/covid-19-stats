@@ -463,7 +463,7 @@ def create_dimensional_tables(conn):
         )
         INSERT INTO stage_csse_filtered
         SELECT
-            Date,
+            substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2) AS Date,
             FIPS,
             Admin2,
             Province_State,
@@ -640,7 +640,9 @@ def create_dimensional_tables(conn):
             Date text,
             FIPS text,
             Confirmed int,
+            ConfirmedIncrease int,
             Deaths int,
+            DeathsIncrease int,
             ConfirmedPer1M real,
             DeathsPer1M real,
             DeltaConfirmedPer1M real,
@@ -653,25 +655,52 @@ def create_dimensional_tables(conn):
 
         INSERT INTO fact_counties_ranked
         SELECT
-            Date
+            t1.Date
             ,t1.FIPS
-            ,Confirmed
-            ,Deaths
-            ,ConfirmedPer1M
-            ,DeathsPer1M
-            ,DeltaConfirmedPer1M
-            ,DeltaDeathsPer1M
-            ,Avg5DaysConfirmedPer1M
-            ,Avg5DaysDeathsPer1M
-            ,ConfirmedRank
-            ,DeathRank
+            ,t1.Confirmed
+            ,t1.Confirmed - t3.Confirmed AS ConfirmedIncrease
+            ,t1.Deaths
+            ,t1.Deaths - t3.Deaths AS DeathsIncrease
+            ,t1.ConfirmedPer1M
+            ,t1.DeathsPer1M
+            ,t1.DeltaConfirmedPer1M
+            ,t1.DeltaDeathsPer1M
+            ,t1.Avg5DaysConfirmedPer1M
+            ,t1.Avg5DaysDeathsPer1M
+            ,t2.ConfirmedRank
+            ,t2.DeathRank
         FROM stage_with_latest t1
         LEFT JOIN stage_with_rank t2
             ON t1.FIPS = t2.FIPS
+        LEFT JOIN stage_with_latest t3
+            ON t1.FIPS = t3.FIPS
+            AND t1.Date = date(t3.Date, '+1 day')
+
         ORDER BY ConfirmedRank;
 
         CREATE UNIQUE INDEX idx_fact_counties_ranked ON fact_counties_ranked (FIPS, Date);
 
+    ''')
+
+    c.executescript('''
+        DROP VIEW IF EXISTS fact_counties_7day_avg;
+
+        CREATE VIEW fact_counties_7day_avg AS
+        select
+            fc1.fips,
+            fc1.date,
+            sum(fc2.ConfirmedIncrease) / 7.0 as Avg7DayConfirmedIncrease, 
+            sum(fc2.DeathsIncrease) / 7.0 as Avg7DayDeathsIncrease
+        from fact_counties_ranked fc1
+        join fact_counties_ranked fc2
+            ON fc1.fips = fc2.fips
+            AND fc2.date >= date(fc1.date, '-6 days')
+            AND fc2.date <= fc1.date
+        WHERE
+            fc1.date >= date('now', '-30 days')
+        GROUP BY
+            fc1.fips,
+            fc1.date;
     ''')
 
     c.executescript('''
@@ -703,10 +732,10 @@ def export_counties_ranked(conn):
     c.executescript('''
         DROP VIEW IF EXISTS output_counties_ranked;
 
+        -- TODO: don't mangle names here; this change needs to be coordinated with JS
         CREATE VIEW output_counties_ranked AS
         SELECT
-            -- TODO: don't mangle names here; this change needs to be coordinated with JS
-            Date,
+            substr(Date, 1, 4) || substr(Date, 6, 2) || substr(Date, 9, 2) AS Date,
             c.FIPS,
             County AS Admin2,
             c.State AS Province_State,
@@ -761,40 +790,94 @@ def export_counties_ranked(conn):
 
         CREATE TABLE output_counties_ranked_by_date AS
             select
-                *,
-                ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date DESC) as rank_latest
-            from output_counties_ranked;
+                t.*,
+                c.County,
+                c.Population,
+                s.StateAbbrev,
+                ROW_NUMBER() OVER (PARTITION BY t.FIPS ORDER BY Date DESC) as rank_latest
+            from fact_counties_ranked t
+            JOIN dim_county c
+                ON t.FIPS = c.FIPS
+            JOIN dim_state s
+                ON c.State = s.State;
 
-        CREATE INDEX idx_output_counties_ranked_by_date ON output_counties_ranked_by_date(rank_latest, StateAbbrev, Admin2);
+        CREATE INDEX idx_output_counties_ranked_by_date ON output_counties_ranked_by_date(rank_latest, StateAbbrev, County);
     ''')
 
     c.execute('''
+        WITH Ranked as (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date) AS RankDateAsc,
+                ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date DESC) AS RankDateDesc
+            FROM fact_counties_7day_avg
+        )
+        ,Overalls AS (
+            SELECT
+                t1.FIPS
+                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS OverallAvg7DayConfirmedIncrease
+                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS OverallAvg7DayDeathsIncrease
+            FROM Ranked t1
+            JOIN Ranked t2
+                ON t1.FIPS = t2.FIPS
+                AND t2.RankDateDesc = 1
+            WHERE
+                t1.RankDateAsc = 1
+        )
         SELECT
+            t.FIPS,
             Date,
-            Admin2 AS County,
+            County,
             StateAbbrev as State,
             Confirmed,
+            ConfirmedIncrease,
+            CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
+            OverallAvg7DayConfirmedIncrease,
             Deaths,
-            Population,
-            ROUND(ConfirmedPer1M, 3) AS ConfirmedPer1M,
-            ROUND(DeathsPer1M, 3) AS DeathsPer1M,
-            ROUND(DeltaConfirmedPer1M, 3) AS DeltaConfirmedPer1M,
-            ROUND(DeltaDeathsPer1M, 3) AS DeltaDeathsPer1M,
-            ROUND(Avg5DaysConfirmedPer1M, 3) AS Avg5DaysConfirmedPer1M,
-            ROUND(Avg5DaysDeathsPer1M, 3) AS Avg5DaysDeathsPer1M
-        FROM output_counties_ranked_by_date
-        WHERE
+            DeathsIncrease,
+            CAST(DeathsIncrease as REAL) / (Deaths - DeathsIncrease) AS DeathsIncreasePct,
+            OverallAvg7DayDeathsIncrease,
+            Population
+        FROM output_counties_ranked_by_date t
+        LEFT JOIN Overalls
+            ON t.FIPS = Overalls.FIPS
+        WHERE 
             rank_latest = 1
             AND state is not null
-            AND lower(Admin2) <> 'unassigned'
-            AND Admin2 not like 'Out of%'
-        ORDER BY DeltaDeathsPer1M DESC;
+            AND lower(County) <> 'unassigned'
+            AND County not like 'Out of%'
     ''')
 
     rows = c.fetchall()
 
     with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
+
+    #### for sparklines
+
+    c.execute('''
+        SELECT
+            *
+        FROM fact_counties_7day_avg
+        ORDER BY date;
+    ''')
+
+    rows = c.fetchall()
+
+    with codecs.open("data/counties_7day_avg.json", "w", encoding='utf8') as f:
+        f.write(json.dumps([row_to_dict(row) for row in rows]))
+
+
+    with codecs.open("data/counties_7day_avg.txt", "w", encoding='utf8') as f:
+        for column in rows[0].keys():
+            f.write(column)
+            f.write("\t")
+        f.write("\n")
+        for row in rows[1:]:
+            for value in row:
+                f.write(str(value))
+                f.write("\t")
+            f.write("\n")
 
 
 def export_state_info(conn):
