@@ -740,7 +740,6 @@ def export_counties_ranked(conn):
             County AS Admin2,
             c.State AS Province_State,
             StateAbbrev AS StateAbbrev,
-            'US' AS Country_Region,
             Confirmed,
             Deaths,
             c.Population,
@@ -775,7 +774,8 @@ def export_counties_ranked(conn):
         f.write("\n")
         for row in rows[1:]:
             for value in row:
-                f.write(str(value))
+                v = str(value) if value is not None else ""
+                f.write(v)
                 f.write("\t")
             f.write("\n")
 
@@ -864,8 +864,8 @@ def export_counties_ranked(conn):
 
     rows = c.fetchall()
 
-    with codecs.open("data/counties_7day_avg.json", "w", encoding='utf8') as f:
-        f.write(json.dumps([row_to_dict(row) for row in rows]))
+    # with codecs.open("data/counties_7day_avg.json", "w", encoding='utf8') as f:
+    #     f.write(json.dumps([row_to_dict(row) for row in rows]))
 
 
     with codecs.open("data/counties_7day_avg.txt", "w", encoding='utf8') as f:
