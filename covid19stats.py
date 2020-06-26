@@ -5,14 +5,28 @@ import codecs
 from collections import namedtuple
 import csv
 import glob
+import io
 import json
 import os
 import os.path
 import sqlite3
 import sys
+import time
 import urllib.request
 
 Path = namedtuple('Path', ['path', 'date'])
+
+last_checkpoint = None
+
+def checkpoint():
+    global last_checkpoint
+    now = time.time()
+    if last_checkpoint:
+        elapsed = "%.2f" % (now - last_checkpoint,)
+        print(f"{elapsed}s elapsed since last checkpoint")
+    else:
+        print("first checkpoint marked")
+    last_checkpoint = now
 
 
 def get_sortable_date(path):
@@ -69,6 +83,8 @@ def load_csse(conn):
                     all_rows.append(row)
 
                 first_row = False
+
+    checkpoint()
 
     print(f"Writing {len(all_rows)} rows to the database")
 
@@ -145,6 +161,8 @@ def load_csse(conn):
     #     and (fips is null or length(fips) <> 5 or fips = '00000')
 
     c.close()
+
+    checkpoint()
 
 
 def load_county_population(conn):
@@ -263,17 +281,29 @@ def load_county_acs_vars(conn):
     c = conn.cursor()
 
     c.execute('''
-        DROP TABLE IF EXISTS county_acs;
+        DROP TABLE IF EXISTS county_acs_raw;
     ''')
 
     # Create table
     c.execute('''
-        CREATE TABLE county_acs ('''
+        CREATE TABLE county_acs_raw ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO county_acs VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO county_acs_raw VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+
+    c.executescript('''
+        DROP TABLE IF EXISTS county_acs;
+
+        CREATE TABLE county_acs AS
+            SELECT
+                *
+                ,state || county AS state_and_county
+            FROM county_acs_raw;
+
+        CREATE INDEX idx_county_acs ON county_acs (state_and_county)
+    ''')
 
     conn.commit()
 
@@ -409,7 +439,7 @@ def create_dimensional_tables(conn):
 
     conn.commit()
 
-    print("stage_csse_filtered")
+    print("stage_regions_with_data")
 
     c.executescript('''
         DROP TABLE IF EXISTS stage_csse_filtered;
@@ -431,7 +461,9 @@ def create_dimensional_tables(conn):
             ShouldHaveFIPS int
             );
 
-        WITH RegionsWithData AS (
+        DROP TABLE IF EXISTS stage_regions_with_data;
+
+        CREATE TABLE stage_regions_with_data AS
             -- only take U.S. regions that have data
             select FIPS
             from csse
@@ -441,17 +473,39 @@ def create_dimensional_tables(conn):
                 AND FIPS <> '00066' -- duplicate for Guam
                 AND LENGTH(FIPS) > 0
             group by FIPS
-            Having SUM(Confirmed > 0) or SUM(Deaths) > 0 or SUM(Recovered) > 0 or sum(active) > 0
-        )
-        ,Filtered AS (
+            Having SUM(Confirmed > 0) or SUM(Deaths) > 0 or SUM(Recovered) > 0 or sum(active) > 0;
+
+        CREATE INDEX idx_stage_regions_with_data ON stage_regions_with_data (FIPS);
+    ''')
+
+    checkpoint()
+
+    print("stage_csse_filtered_pre")
+
+    c.executescript('''
+
+        DROP TABLE IF EXISTS stage_csse_filtered_pre;
+
+        CREATE TABLE stage_csse_filtered_pre AS
             SELECT
                 t1.*
             FROM csse t1
-            JOIN RegionsWithData t2
+            JOIN stage_regions_with_data t2
                 ON t1.FIPS = t2.FIPS
-            WHERE ShouldHaveFIPS = 1
-        )
-        ,Deduped AS (
+            WHERE ShouldHaveFIPS = 1;
+
+        CREATE INDEX idx_stage_csse_filtered_pre ON stage_csse_filtered_pre (FIPS, Date, Confirmed, Deaths);
+
+    ''')
+
+    checkpoint()
+
+    print("stage_csse_filtered_deduped")
+
+    c.executescript('''
+        DROP TABLE IF EXISTS stage_csse_filtered_deduped;
+
+        CREATE TABLE stage_csse_filtered_deduped AS
             -- there's duplication for the same FIPS and Date;
             -- for some cases, it looks like counts got spread out across 2 rows;
             -- in other cases, it looks like there are rows where values are 0.
@@ -459,8 +513,17 @@ def create_dimensional_tables(conn):
             SELECT
                 *
                 ,ROW_NUMBER() OVER (PARTITION BY FIPS, Date ORDER BY Confirmed DESC, Deaths DESC) AS RN
-            FROM Filtered
-        )
+            FROM stage_csse_filtered_pre;
+
+        CREATE INDEX idx_stage_csse_filtered_deduped ON stage_csse_filtered_deduped (RN);
+
+    ''')
+
+    checkpoint()
+
+    print("stage_csse_filtered")
+
+    c.executescript('''
         INSERT INTO stage_csse_filtered
         SELECT
             substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2) AS Date,
@@ -477,11 +540,15 @@ def create_dimensional_tables(conn):
             Active,
             Combined_Key,
             ShouldHaveFIPS
-        FROM Deduped
+        FROM stage_csse_filtered_deduped
         WHERE RN = 1;
 
         CREATE INDEX idx_stage_csse_filtered ON stage_csse_filtered (FIPS, Date);
     ''')
+
+    checkpoint()
+
+    print("dim_county")
 
     c.executescript('''
         DROP TABLE IF EXISTS dim_county;
@@ -531,16 +598,20 @@ def create_dimensional_tables(conn):
         LEFT JOIN fips_population t2
             ON t1.FIPS = t2.FIPS
         LEFT JOIN county_acs t3
-            ON t1.FIPS = t3.state || t3.county
+            ON t1.FIPS = t3.state_and_county
         WHERE t1.DateRank = 1
     ''')
+
+    checkpoint()
 
     print("stage_with_population")
 
     c.executescript('''
+        DROP TABLE IF EXISTS stage_with_population_pre;
+
         DROP TABLE IF EXISTS stage_with_population;
 
-        CREATE TABLE stage_with_population AS
+        CREATE TABLE stage_with_population_pre AS
             SELECT
                 t1.*
                 ,Population
@@ -551,8 +622,21 @@ def create_dimensional_tables(conn):
             LEFT JOIN dim_county t2
                 ON t1.FIPS = t2.FIPS;
 
+        CREATE TABLE stage_with_population AS
+            SELECT
+                *,
+                DateRank - 1 AS DateRankMinus1,
+                DateRank - 5 AS DateRankMinus5
+            FROM stage_with_population_pre;
+
+        DROP TABLE IF EXISTS stage_with_population_pre;
+
         CREATE INDEX idx_stage_with_population ON stage_with_population (FIPS, DateRank);
-    ''')
+        CREATE INDEX idx_stage_with_population2 ON stage_with_population (FIPS, DateRankMinus1);
+        CREATE INDEX idx_stage_with_population3 ON stage_with_population (FIPS, DateRankMinus5);
+     ''')
+
+    checkpoint()
 
     print("stage_with_deltas")
 
@@ -569,14 +653,16 @@ def create_dimensional_tables(conn):
             from stage_with_population t1
             left join stage_with_population t2 
                 on t1.fips = t2.fips
-                and t1.DateRank = t2.DateRank - 1
+                and t1.DateRank = t2.DateRankMinus1
             left join stage_with_population t3
                 on t1.fips = t3.fips
-                and t1.DateRank = t3.DateRank - 5
+                and t1.DateRank = t3.DateRankMinus5
         ;
 
         CREATE INDEX idx_stage_with_deltas ON stage_with_deltas (FIPS);
     ''')
+
+    checkpoint()
 
     print("stage_latest")
 
@@ -595,6 +681,8 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_latest ON stage_latest (FIPS);
     ''')
 
+    checkpoint()
+
     print("stage_with_latest")
 
     c.executescript('''
@@ -603,6 +691,7 @@ def create_dimensional_tables(conn):
         CREATE TABLE stage_with_latest AS
             SELECT
                 t1.*
+                ,date(t1.Date, '+1 day') as DatePlus1Day
                 ,t2.LatestConfirmedPer1M
                 ,t2.LatestDeathsPer1M
             FROM stage_with_deltas t1
@@ -610,7 +699,12 @@ def create_dimensional_tables(conn):
                 ON t1.FIPS = t2.FIPS;
 
         CREATE INDEX idx_stage_with_latest ON stage_with_latest (FIPS, LatestConfirmedPer1M, LatestDeathsPer1M);
-    ''')
+        CREATE INDEX idx_stage_with_latest2 ON stage_with_latest (FIPS, DatePlus1Day);
+        CREATE INDEX idx_stage_with_latest3 ON stage_with_latest (LatestConfirmedPer1M);
+        CREATE INDEX idx_stage_with_latest4 ON stage_with_latest (LatestDeathsPer1M);
+     ''')
+
+    checkpoint()
 
     print("stage_with_rank")
 
@@ -630,6 +724,7 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_with_rank ON stage_with_rank (FIPS, ConfirmedRank);
     ''')
 
+    checkpoint()
 
     print("fact_counties_ranked")
 
@@ -674,7 +769,7 @@ def create_dimensional_tables(conn):
             ON t1.FIPS = t2.FIPS
         LEFT JOIN stage_with_latest t3
             ON t1.FIPS = t3.FIPS
-            AND t1.Date = date(t3.Date, '+1 day')
+            AND t1.Date = t3.DatePlus1Day
 
         ORDER BY ConfirmedRank;
 
@@ -715,6 +810,7 @@ def create_dimensional_tables(conn):
 
     c.close()
 
+    checkpoint()
 
 def row_to_dict(row):
     d = {}
@@ -765,22 +861,30 @@ def export_counties_ranked(conn):
         ORDER BY FIPS, Date;
     ''')
 
+
+    checkpoint()
+
     rows = c.fetchall()
 
+    blank_if_none = lambda value: str(value) if value is not None else ""
+
+    buf = io.StringIO()
+    for column in rows[0].keys():
+        buf.write(column)
+        buf.write("\t")
+    buf.write("\n")
+    for row in rows[1:]:
+        buf.write("\t".join([blank_if_none(value) for value in row]) + "\n")
+
     with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
-        for column in rows[0].keys():
-            f.write(column)
-            f.write("\t")
-        f.write("\n")
-        for row in rows[1:]:
-            for value in row:
-                v = str(value) if value is not None else ""
-                f.write(v)
-                f.write("\t")
-            f.write("\n")
+        f.write(buf.getvalue())
+
+    checkpoint()
 
     with codecs.open("data/counties_ranked.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
+
+    checkpoint()
 
     print("exporting counties_rate_of_change")
 
@@ -867,17 +971,21 @@ def export_counties_ranked(conn):
     # with codecs.open("data/counties_7day_avg.json", "w", encoding='utf8') as f:
     #     f.write(json.dumps([row_to_dict(row) for row in rows]))
 
+    buf = io.StringIO()
+    for column in rows[0].keys():
+        buf.write(column)
+        buf.write("\t")
+    buf.write("\n")
+    for row in rows[1:]:
+        for value in row:
+            buf.write(str(value))
+            buf.write("\t")
+        buf.write("\n")
 
     with codecs.open("data/counties_7day_avg.txt", "w", encoding='utf8') as f:
-        for column in rows[0].keys():
-            f.write(column)
-            f.write("\t")
-        f.write("\n")
-        for row in rows[1:]:
-            for value in row:
-                f.write(str(value))
-                f.write("\t")
-            f.write("\n")
+        f.write(buf.getvalue())
+
+    checkpoint()
 
 
 def export_state_info(conn):
@@ -906,6 +1014,8 @@ def load_all_data():
     conn = get_db_conn()
 
     #### load source data
+
+    checkpoint()
 
     load_csse(conn)
 
