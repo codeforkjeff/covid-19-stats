@@ -562,7 +562,8 @@ def create_dimensional_tables(conn):
             Combined_Key text,
             Population int,
             MedianIncome int,
-            MedianAge float
+            MedianAge float,
+            primary key (FIPS)
         );
 
         CREATE UNIQUE INDEX idx_dim_county ON dim_county (County, State);
