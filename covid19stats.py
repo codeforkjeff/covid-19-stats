@@ -7,6 +7,7 @@ import csv
 import glob
 import io
 import json
+import multiprocessing
 import os
 import os.path
 import sqlite3
@@ -34,6 +35,49 @@ def get_sortable_date(path):
     return basename[6:10] + basename[0:2] + basename[3:5]
 
 
+ordered_fields = [
+    "FIPS",
+    "Admin2",
+    "Province_State",
+    "Country_Region",
+    "Last_Update",
+    "Lat",
+    "Long_",
+    "Confirmed",
+    "Deaths",
+    "Recovered",
+    "Active",
+    "Combined_Key",
+]
+
+
+def get_rows_from_csse_file(path):
+    result = []
+    print(f"Loading from {path.path}")
+    with codecs.open(path.path, encoding='utf8') as f:
+        reader = csv.reader(f)
+        field_order_in_file = []
+        first_row = True
+        for row in reader:
+            if first_row:
+                field_order_in_file = row
+                # strip out BOM
+                if field_order_in_file[0].encode().startswith(codecs.BOM_UTF8):
+                    # this is ridiculous
+                    field_order_in_file[0] = field_order_in_file[0].encode()[len(codecs.BOM_UTF8):].decode()
+            else:
+                reordered = []
+                for field in ordered_fields:
+                    reordered.append(row[field_order_in_file.index(field)])
+
+                row = [path.date] + reordered
+
+                result.append(row)
+
+            first_row = False
+    return result
+
+
 def load_csse(conn):
 
     # assumes COVID-19 repo has been cloned to home directory
@@ -45,44 +89,10 @@ def load_csse(conn):
 
     all_rows = []
 
-    ordered_fields = [
-        "FIPS",
-        "Admin2",
-        "Province_State",
-        "Country_Region",
-        "Last_Update",
-        "Lat",
-        "Long_",
-        "Confirmed",
-        "Deaths",
-        "Recovered",
-        "Active",
-        "Combined_Key",
-    ]
-
-    for path in filtered_paths:
-        print(f"Loading from {path.path}")
-        with codecs.open(path.path, encoding='utf8') as f:
-            reader = csv.reader(f)
-            field_order_in_file = []
-            first_row = True
-            for row in reader:
-                if first_row:
-                    field_order_in_file = row
-                    # strip out BOM
-                    if field_order_in_file[0].encode().startswith(codecs.BOM_UTF8):
-                        # this is ridiculous
-                        field_order_in_file[0] = field_order_in_file[0].encode()[len(codecs.BOM_UTF8):].decode()
-                else:
-                    reordered = []
-                    for field in ordered_fields:
-                        reordered.append(row[field_order_in_file.index(field)])
-
-                    row = [path.date] + reordered
-
-                    all_rows.append(row)
-
-                first_row = False
+    p = multiprocessing.Pool(20)
+    for result in p.map(get_rows_from_csse_file, filtered_paths):
+        all_rows = all_rows + result
+    p.close()
 
     checkpoint()
 
@@ -889,7 +899,12 @@ def export_counties_ranked(conn):
 
     checkpoint()
 
+
+def export_counties_rate_of_change(conn):
+
     print("exporting counties_rate_of_change")
+
+    c = conn.cursor()
 
     c.executescript('''
 
@@ -959,6 +974,13 @@ def export_counties_ranked(conn):
 
     with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
+
+
+def export_counties_7day_avg(conn):
+
+    print("exporting counties_7day_avg")
+
+    c = conn.cursor()
 
     #### for sparklines
 
@@ -1034,9 +1056,22 @@ def load_all_data():
 
     #### exports
 
-    export_state_info(conn)
+    p1 = multiprocessing.Process(target=export_state_info, args=(conn,))
+    p1.start()
 
-    export_counties_ranked(conn)
+    p2 = multiprocessing.Process(target=export_counties_ranked, args=(conn,))
+    p2.start()
+
+    p3 = multiprocessing.Process(target=export_counties_rate_of_change, args=(conn,))
+    p3.start()
+
+    p4 = multiprocessing.Process(target=export_counties_7day_avg, args=(conn,))
+    p4.start()
+
+    p1.join()
+    p2.join()
+    p3.join()
+    p4.join()
 
     conn.close()
 
