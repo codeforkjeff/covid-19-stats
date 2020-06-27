@@ -90,8 +90,10 @@ def load_csse(conn):
 
     c = conn.cursor()
 
-    c.execute("PRAGMA cache_size=1000000")
+    c.execute("PRAGMA synchronous=OFF")
+    c.execute("PRAGMA cache_size=10000000")
     c.execute("PRAGMA journal_mode = OFF")
+    c.execute("PRAGMA locking_mode = EXCLUSIVE")
     c.execute("PRAGMA temp_store = MEMORY")
 
     c.execute('''
