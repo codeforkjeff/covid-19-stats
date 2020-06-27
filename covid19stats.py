@@ -795,7 +795,7 @@ def create_dimensional_tables(conn):
             AND fc2.date >= date(fc1.date, '-6 days')
             AND fc2.date <= fc1.date
         WHERE
-            fc1.date >= date('now', '-30 days')
+            fc1.date >= date((SELECT MAX(date) FROM fact_counties_ranked), '-30 days')
         GROUP BY
             fc1.fips,
             fc1.date;
