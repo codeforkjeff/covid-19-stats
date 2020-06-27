@@ -6,6 +6,7 @@ from collections import namedtuple
 import csv
 import glob
 import io
+import functools
 import json
 import multiprocessing
 import os
@@ -17,17 +18,18 @@ import urllib.request
 
 Path = namedtuple('Path', ['path', 'date'])
 
-last_checkpoint = None
 
-def checkpoint():
-    global last_checkpoint
-    now = time.time()
-    if last_checkpoint:
-        elapsed = "%.2f" % (now - last_checkpoint,)
-        print(f"{elapsed}s elapsed since last checkpoint")
-    else:
-        print("first checkpoint marked")
-    last_checkpoint = now
+def timer(func):
+    """Print the runtime of the decorated function"""
+    @functools.wraps(func)
+    def wrapper_timer(*args, **kwargs):
+        start_time = time.perf_counter()
+        value = func(*args, **kwargs)
+        end_time = time.perf_counter()
+        run_time = end_time - start_time
+        print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
+        return value
+    return wrapper_timer
 
 
 def get_sortable_date(path):
@@ -78,6 +80,7 @@ def get_rows_from_csse_file(path):
     return result
 
 
+@timer
 def load_csse(conn):
 
     # assumes COVID-19 repo has been cloned to home directory
@@ -94,16 +97,15 @@ def load_csse(conn):
         all_rows = all_rows + result
     p.close()
 
-    checkpoint()
 
     print(f"Writing {len(all_rows)} rows to the database")
 
     c = conn.cursor()
 
-    c.execute("PRAGMA synchronous=OFF")
+    #c.execute("PRAGMA synchronous=OFF")
     c.execute("PRAGMA cache_size=10000000")
     c.execute("PRAGMA journal_mode = OFF")
-    c.execute("PRAGMA locking_mode = EXCLUSIVE")
+    #c.execute("PRAGMA locking_mode = EXCLUSIVE")
     c.execute("PRAGMA temp_store = MEMORY")
 
     c.execute('''
@@ -174,9 +176,8 @@ def load_csse(conn):
 
     c.close()
 
-    checkpoint()
 
-
+@timer
 def load_county_population(conn):
 
     path = "stage/co-est2019-alldata.csv"
@@ -267,6 +268,7 @@ def load_county_population(conn):
     c.close()
 
 
+@timer
 def load_county_acs_vars(conn):
     """ load county-level variables from ACS """
 
@@ -431,6 +433,7 @@ def load_state_info(conn):
     c.close()
 
 
+@timer
 def create_dimensional_tables(conn):
 
     c = conn.cursor()
@@ -490,7 +493,6 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_regions_with_data ON stage_regions_with_data (FIPS);
     ''')
 
-    checkpoint()
 
     print("stage_csse_filtered_pre")
 
@@ -510,7 +512,6 @@ def create_dimensional_tables(conn):
 
     ''')
 
-    checkpoint()
 
     print("stage_csse_filtered_deduped")
 
@@ -531,7 +532,6 @@ def create_dimensional_tables(conn):
 
     ''')
 
-    checkpoint()
 
     print("stage_csse_filtered")
 
@@ -558,7 +558,6 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_csse_filtered ON stage_csse_filtered (FIPS, Date);
     ''')
 
-    checkpoint()
 
     print("dim_county")
 
@@ -615,7 +614,6 @@ def create_dimensional_tables(conn):
         WHERE t1.DateRank = 1
     ''')
 
-    checkpoint()
 
     print("stage_with_population")
 
@@ -649,7 +647,6 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_with_population3 ON stage_with_population (FIPS, DateRankMinus5);
      ''')
 
-    checkpoint()
 
     print("stage_with_deltas")
 
@@ -675,7 +672,6 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_with_deltas ON stage_with_deltas (FIPS);
     ''')
 
-    checkpoint()
 
     print("stage_latest")
 
@@ -694,7 +690,6 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_latest ON stage_latest (FIPS);
     ''')
 
-    checkpoint()
 
     print("stage_with_latest")
 
@@ -717,7 +712,6 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_with_latest4 ON stage_with_latest (LatestDeathsPer1M);
      ''')
 
-    checkpoint()
 
     print("stage_with_rank")
 
@@ -737,7 +731,6 @@ def create_dimensional_tables(conn):
         CREATE INDEX idx_stage_with_rank ON stage_with_rank (FIPS, ConfirmedRank);
     ''')
 
-    checkpoint()
 
     print("fact_counties_ranked")
 
@@ -823,7 +816,6 @@ def create_dimensional_tables(conn):
 
     c.close()
 
-    checkpoint()
 
 def row_to_dict(row):
     d = {}
@@ -832,7 +824,10 @@ def row_to_dict(row):
     return d
 
 
-def export_counties_ranked(conn):
+@timer
+def export_counties_ranked():
+
+    conn = get_db_conn()
 
     print("exporting output_counties_ranked")
 
@@ -875,7 +870,6 @@ def export_counties_ranked(conn):
     ''')
 
 
-    checkpoint()
 
     rows = c.fetchall()
 
@@ -892,15 +886,17 @@ def export_counties_ranked(conn):
     with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
         f.write(buf.getvalue())
 
-    checkpoint()
 
     with codecs.open("data/counties_ranked.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
-    checkpoint()
+    conn.close()
 
 
-def export_counties_rate_of_change(conn):
+@timer
+def export_counties_rate_of_change():
+
+    conn = get_db_conn()
 
     print("exporting counties_rate_of_change")
 
@@ -975,8 +971,13 @@ def export_counties_rate_of_change(conn):
     with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
+    conn.close()
 
-def export_counties_7day_avg(conn):
+
+@timer
+def export_counties_7day_avg():
+
+    conn = get_db_conn()
 
     print("exporting counties_7day_avg")
 
@@ -1010,10 +1011,13 @@ def export_counties_7day_avg(conn):
     with codecs.open("data/counties_7day_avg.txt", "w", encoding='utf8') as f:
         f.write(buf.getvalue())
 
-    checkpoint()
+    conn.close()
 
 
-def export_state_info(conn):
+@timer
+def export_state_info():
+
+    conn = get_db_conn()
 
     c = conn.cursor()
 
@@ -1027,6 +1031,8 @@ def export_state_info(conn):
     with codecs.open("data/state_population.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
+    conn.close()
+
 
 def get_db_conn():
     conn = sqlite3.connect('stage/covid19.db')
@@ -1039,8 +1045,6 @@ def load_all_data():
     conn = get_db_conn()
 
     #### load source data
-
-    checkpoint()
 
     load_csse(conn)
 
@@ -1056,16 +1060,16 @@ def load_all_data():
 
     #### exports
 
-    p1 = multiprocessing.Process(target=export_state_info, args=(conn,))
+    p1 = multiprocessing.Process(target=export_state_info)
     p1.start()
 
-    p2 = multiprocessing.Process(target=export_counties_ranked, args=(conn,))
+    p2 = multiprocessing.Process(target=export_counties_ranked)
     p2.start()
 
-    p3 = multiprocessing.Process(target=export_counties_rate_of_change, args=(conn,))
+    p3 = multiprocessing.Process(target=export_counties_rate_of_change)
     p3.start()
 
-    p4 = multiprocessing.Process(target=export_counties_7day_avg, args=(conn,))
+    p4 = multiprocessing.Process(target=export_counties_7day_avg)
     p4.start()
 
     p1.join()
@@ -1074,5 +1078,3 @@ def load_all_data():
     p4.join()
 
     conn.close()
-
-
