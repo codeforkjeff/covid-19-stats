@@ -457,25 +457,6 @@ def create_dimensional_tables(conn):
     print("stage_regions_with_data")
 
     c.executescript('''
-        DROP TABLE IF EXISTS stage_csse_filtered;
-
-        CREATE TABLE stage_csse_filtered (
-            Date text,
-            FIPS text,
-            Admin2 text,
-            Province_State text,
-            Country_Region text,
-            Last_Update text,
-            Lat text,
-            Long_ text,
-            Confirmed int,
-            Deaths int,
-            Recovered int,
-            Active int,
-            Combined_Key text,
-            ShouldHaveFIPS int
-            );
-
         DROP TABLE IF EXISTS stage_regions_with_data;
 
         CREATE TABLE stage_regions_with_data AS
@@ -504,9 +485,9 @@ def create_dimensional_tables(conn):
             SELECT
                 t1.*
             FROM csse t1
-            JOIN stage_regions_with_data t2
-                ON t1.FIPS = t2.FIPS
-            WHERE ShouldHaveFIPS = 1;
+            WHERE
+                ShouldHaveFIPS = 1
+                AND EXISTS (SELECT 1 FROM stage_regions_with_data t2 WHERE t1.FIPS = t2.FIPS);
 
         CREATE INDEX idx_stage_csse_filtered_pre ON stage_csse_filtered_pre (FIPS, Date, Confirmed, Deaths);
 
@@ -536,6 +517,25 @@ def create_dimensional_tables(conn):
     print("stage_csse_filtered")
 
     c.executescript('''
+        DROP TABLE IF EXISTS stage_csse_filtered;
+
+        CREATE TABLE stage_csse_filtered (
+            Date text,
+            FIPS text,
+            Admin2 text,
+            Province_State text,
+            Country_Region text,
+            Last_Update text,
+            Lat text,
+            Long_ text,
+            Confirmed int,
+            Deaths int,
+            Recovered int,
+            Active int,
+            Combined_Key text,
+            ShouldHaveFIPS int
+            );
+
         INSERT INTO stage_csse_filtered
         SELECT
             substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2) AS Date,
