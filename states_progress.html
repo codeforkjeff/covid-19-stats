@@ -187,6 +187,30 @@
               
               data = data.filter(row => row.state != 'AS');
 
+              // make records for US as a whole
+              var us_records = data.reduce((acc, row) => {
+                var record = acc.filter(us_record => us_record.date == row.date)[0];
+                if(!record) {
+                  record = {};
+                  record.state = 'US';
+                  record.date = row.date;
+                  record.positive = 0;
+                  record.positiveIncrease = 0;
+                  record.totalTestResults = 0;
+                  record.death = 0;
+                  record.deathIncrease = 0;
+                  acc.push(record);
+                }
+                record.positive += row.positive;
+                record.positiveIncrease += row.positiveIncrease;
+                record.totalTestResults += row.totalTestResults;
+                record.death += row.death;
+                record.deathIncrease += row.deathIncrease;
+                return acc;
+              }, []);
+
+              data = data.concat(us_records);
+
               data.sort(comparator);
               
               var date = data[data.length-1].date.toString();
