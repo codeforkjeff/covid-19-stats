@@ -791,7 +791,9 @@ def create_dimensional_tables(conn):
             fc1.fips,
             fc1.date,
             sum(fc2.ConfirmedIncrease) / 7.0 as Avg7DayConfirmedIncrease, 
-            sum(fc2.DeathsIncrease) / 7.0 as Avg7DayDeathsIncrease
+            sum(fc2.DeathsIncrease) / 7.0 as Avg7DayDeathsIncrease,
+            ROW_NUMBER() OVER (PARTITION BY fc1.FIPS ORDER BY fc1.Date) AS RankDateAsc,
+            ROW_NUMBER() OVER (PARTITION BY fc1.FIPS ORDER BY fc1.Date DESC) AS RankDateDesc
         from fact_counties_ranked fc1
         join fact_counties_ranked fc2
             ON fc1.fips = fc2.fips
@@ -904,9 +906,9 @@ def export_counties_rate_of_change():
 
     c.executescript('''
 
-        DROP TABLE IF EXISTS output_counties_ranked_by_date;
+        DROP TABLE IF EXISTS stage_counties_ranked_by_date;
 
-        CREATE TABLE output_counties_ranked_by_date AS
+        CREATE TABLE stage_counties_ranked_by_date AS
             select
                 t.*,
                 c.County,
@@ -919,29 +921,29 @@ def export_counties_rate_of_change():
             JOIN dim_state s
                 ON c.State = s.State;
 
-        CREATE INDEX idx_output_counties_ranked_by_date ON output_counties_ranked_by_date(rank_latest, StateAbbrev, County);
+        CREATE INDEX idx_stage_counties_ranked_by_date ON stage_counties_ranked_by_date(rank_latest, StateAbbrev, County);
     ''')
 
-    c.execute('''
-        WITH Ranked as (
-            SELECT
-                *,
-                ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date) AS RankDateAsc,
-                ROW_NUMBER() OVER (PARTITION BY FIPS ORDER BY Date DESC) AS RankDateDesc
-            FROM fact_counties_7day_avg
-        )
-        ,Overalls AS (
+    c.executescript('''
+
+        DROP TABLE IF EXISTS stage_counties_month_change_overall;
+
+        CREATE TABLE stage_counties_month_change_overall AS
             SELECT
                 t1.FIPS
-                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS OverallAvg7DayConfirmedIncrease
-                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS OverallAvg7DayDeathsIncrease
-            FROM Ranked t1
-            JOIN Ranked t2
+                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncrease
+                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncrease
+            FROM fact_counties_7day_avg t1
+            JOIN fact_counties_7day_avg t2
                 ON t1.FIPS = t2.FIPS
                 AND t2.RankDateDesc = 1
             WHERE
                 t1.RankDateAsc = 1
-        )
+        ;
+
+        DROP TABLE IF EXISTS fact_counties_latest;
+
+        CREATE TABLE fact_counties_latest AS
         SELECT
             t.FIPS,
             Date,
@@ -950,20 +952,26 @@ def export_counties_rate_of_change():
             Confirmed,
             ConfirmedIncrease,
             CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
-            OverallAvg7DayConfirmedIncrease,
+            MonthAvg7DayConfirmedIncrease,
             Deaths,
             DeathsIncrease,
             CAST(DeathsIncrease as REAL) / (Deaths - DeathsIncrease) AS DeathsIncreasePct,
-            OverallAvg7DayDeathsIncrease,
+            MonthAvg7DayDeathsIncrease,
             Population
-        FROM output_counties_ranked_by_date t
-        LEFT JOIN Overalls
-            ON t.FIPS = Overalls.FIPS
+        FROM stage_counties_ranked_by_date t
+        LEFT JOIN stage_counties_month_change_overall o
+            ON t.FIPS = o.FIPS
         WHERE 
             rank_latest = 1
             AND state is not null
             AND lower(County) <> 'unassigned'
             AND County not like 'Out of%'
+    ''')
+
+    c.execute('''
+        SELECT
+            *
+        FROM fact_counties_latest;
     ''')
 
     rows = c.fetchall()
@@ -987,7 +995,7 @@ def export_counties_7day_avg():
 
     c.execute('''
         SELECT
-            *
+            FIPS, Date, Avg7DayConfirmedIncrease, Avg7DayDeathsIncrease
         FROM fact_counties_7day_avg
         ORDER BY date;
     ''')

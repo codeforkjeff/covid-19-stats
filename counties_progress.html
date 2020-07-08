@@ -206,12 +206,12 @@
                   row.ConfirmedIncrease,
                   row.ConfirmedIncreasePct,
                   "<canvas class='centered sparkline sparkline-positives' data-fips='" + row.FIPS + "' id='sparkline-positives-" + row.FIPS + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positives-start-" + row.FIPS + "'></span><span class='right' id='sparkline-positives-end-" + row.FIPS + "'></span></div>",
-                  row.OverallAvg7DayConfirmedIncrease,
+                  row.MonthAvg7DayConfirmedIncrease,
                   row.Deaths,
                   row.DeathsIncrease,
                   row.DeathsIncreasePct,
                   "<canvas class='centered sparkline sparkline-deaths' data-fips='" + row.FIPS + "' id='sparkline-deaths-" + row.FIPS + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-deaths-start-" + row.FIPS + "'></span><span class='right' id='sparkline-deaths-end-" + row.FIPS + "'></span></div>",
-                  row.OverallAvg7DayDeathsIncrease
+                  row.MonthAvg7DayDeathsIncrease
                 ];
                 return values;
               });
