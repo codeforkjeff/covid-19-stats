@@ -879,6 +879,21 @@ def create_dimensional_tables():
                 t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
+        DROP TABLE IF EXISTS stage_counties_one_week_change;
+
+        CREATE TABLE stage_counties_one_week_change AS
+            SELECT
+                t1.FIPS
+                ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS OneWeekConfirmedIncrease
+                ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS OneWeekConfirmedIncreasePct
+            FROM fact_counties_ranked t1
+            JOIN fact_counties_ranked t2
+                ON t1.FIPS = t2.FIPS
+                AND t1.Date = date(t2.Date, '-7 days')
+            WHERE
+                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
+        ;
+
         DROP TABLE IF EXISTS stage_counties_two_week_change;
 
         CREATE TABLE stage_counties_two_week_change AS
@@ -918,6 +933,8 @@ def create_dimensional_tables():
             Confirmed,
             ConfirmedIncrease,
             CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
+            coalesce(OneWeekConfirmedIncrease, 0) AS OneWeekConfirmedIncrease,
+            coalesce(OneWeekConfirmedIncreasePct, 0) AS OneWeekConfirmedIncreasePct,
             coalesce(TwoWeekConfirmedIncrease, 0) AS TwoWeekConfirmedIncrease,
             coalesce(TwoWeekConfirmedIncreasePct, 0) AS TwoWeekConfirmedIncreasePct,
             coalesce(MonthConfirmedIncrease, 0) AS MonthConfirmedIncrease,
@@ -934,6 +951,8 @@ def create_dimensional_tables():
             ON t.FIPS = c.FIPS
         LEFT JOIN stage_counties_7dayavg_month_change_overall o
             ON t.FIPS = o.FIPS
+        LEFT JOIN stage_counties_one_week_change one
+            ON t.FIPS = one.FIPS
         LEFT JOIN stage_counties_two_week_change two
             ON t.FIPS = two.FIPS
         LEFT JOIN stage_counties_month_change mon
@@ -1056,6 +1075,8 @@ def export_counties_rate_of_change():
             Confirmed,
             ConfirmedIncrease,
             ConfirmedIncreasePct,
+            OneWeekConfirmedIncrease,
+            OneWeekConfirmedIncreasePct,
             TwoWeekConfirmedIncrease,
             TwoWeekConfirmedIncreasePct,
             MonthConfirmedIncrease,
