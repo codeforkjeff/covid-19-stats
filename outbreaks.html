@@ -18,6 +18,15 @@
 		#controls {
 			margin-bottom: 10px;
 		}
+		#map-container {
+			position: relative;
+		}
+		#map {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			width: 100%;
+		}
 	</style>
 </head>
 <body>
@@ -39,8 +48,12 @@
 
   </form>
 
-	<div id="mapid" style="width: 100%; height: 500px;"></div>
+	<div id="map-container">
+		<div id="map"></div>
+	</div>
 	<script>
+
+$(document).ready(function() {
 
 	function create_comparator(attr) {
         return function(a,b) {
@@ -50,7 +63,9 @@
         };
 	}
 
-	var mymap = L.map('mapid').setView([37.0902, -95.7129], 5);
+    document.getElementById("map-container").style.height = (window.innerHeight - 120) + "px";
+
+	var mymap = L.map('map').setView([37.0902, -95.7129], 5);
 
 	L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYWJzb2x1dGVseWplZmYiLCJhIjoiY2tjZWR4MHF1MDExczJzbnE5NW9ndjJwNiJ9.qhl-MLfZfDvdm7tdI01NAA', {
 		maxZoom: 18,
@@ -139,11 +154,11 @@
     	draw_circles();
     });
 
-
     $("#view-by").change(function() {
       	draw_circles();
     });
 
+});
 
 	</script>
 
