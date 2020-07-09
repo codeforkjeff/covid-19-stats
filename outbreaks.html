@@ -67,28 +67,29 @@
 
 	function draw_circles() {
 		var field;
-		var radius_multipler = 50;
+		// radius value is in meters
+		var radius_multipler;
 		if($("#view-by").val() == 'day') {
 			field = 'ConfirmedIncrease';
-			radius_multipler = 10;
+			radius_multipler = 5;
 		} else if($("#view-by").val() == 'day_pct') {
 			field = 'ConfirmedIncreasePct';
-			radius_multipler = 10000;
+			radius_multipler = 1000;
 		} else if($("#view-by").val() == 'week') {
 			field = 'OneWeekConfirmedIncrease';
-			radius_multipler = 2;
+			radius_multipler = 5;
 		} else if($("#view-by").val() == 'week_pct') {
 			field = 'OneWeekConfirmedIncreasePct';
-			radius_multipler = 5000;
+			radius_multipler = 1000;
 		} else if($("#view-by").val() == 'twoweek') {
 			field = 'TwoWeekConfirmedIncrease';
-			radius_multipler = 2;
+			radius_multipler = 5;
 		} else if($("#view-by").val() == 'twoweek_pct') {
 			field = 'TwoWeekConfirmedIncreasePct';
-			radius_multipler = 5000;
+			radius_multipler = 1000;
 		} else if($("#view-by").val() == 'month') {
 			field = 'MonthConfirmedIncrease';
-			radius_multipler = 2;
+			radius_multipler = 5;
 		} else if($("#view-by").val() == 'month_pct') {
 			field = 'MonthConfirmedIncreasePct';
 			radius_multipler = 1000;
