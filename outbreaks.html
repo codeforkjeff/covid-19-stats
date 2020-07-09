@@ -54,21 +54,21 @@
     
     Show 100 Counties with Highest <select id="view-by">
       <option value="day">New Cases in Last Day</option>
-      <option value="day_pct">% Change in New Cases in Last Day</option>
+      <option value="day_pct">New Cases in Last Day - % Change</option>
       <option value="week">New Cases in Last Week</option>
-      <option value="week_pct">% Change in New Cases in Last Week</option>
+      <option value="week_pct">New Cases in Last Week - % Change</option>
       <option value="twoweek" selected>New Cases in Last 2 Weeks</option>
-      <option value="twoweek_pct">% Change in New Cases in Last 2 Weeks</option>
+      <option value="twoweek_pct">New Cases in Last 2 Weeks - % Change</option>
       <option value="month">New Cases in Last Month</option>
-      <option value="month_pct">% Change in New Cases in Last Month</option>
+      <option value="month_pct">New Cases in Last Month - % Change</option>
     </select>
 
     <span style="margin-left: 2em;">
     Bubble Scale
     <select id="bubble-size">
-    	<option value="small">Small: 1 Case = 2m, 1 Pct Point = 50m</option>
-    	<option value="medium" selected>Medium: 1 Case = 5m, 1 Pct Point = 100m</option>
-    	<option value="large">Large: 1 Case = 10m, 1 Pct Point = 300m</option>
+    	<option value="small">Small: 0.05 mi&sup2; per case or pct pt</option>
+    	<option value="medium" selected>Medium: 0.1 mi&sup2; per case or pct pt</option>
+    	<option value="large">Large: 1.0 mi&sup2; per case or pct pt</option>
 	</select>
 	</span>
   </form>
@@ -111,15 +111,20 @@ $(document).ready(function() {
 
 		var size = $("#bubble-size").val()
 
+		// multipliers are in square meters
+
 		if(size == 'small') {
-			MULT_NUM_CASES = 2;
-			MULT_PCT = 50 * 100;
+			// 0.05mi
+			MULT_NUM_CASES = 129449;
+			MULT_PCT = 129449 * 100;
 		} else if(size == 'medium') {
-			MULT_NUM_CASES = 5;
-			MULT_PCT = 100 * 100;
+			// 0.1mi
+			MULT_NUM_CASES = 258998;
+			MULT_PCT = 258998 * 100;
 		} else if(size == 'large') {
-			MULT_NUM_CASES = 10;
-			MULT_PCT = 300 * 100;
+			// 1mi
+			MULT_NUM_CASES = 2589988;
+			MULT_PCT = 2589988 * 100;
 		}
 	}
 
@@ -164,7 +169,9 @@ $(document).ready(function() {
 
     	for(var i = 0; i < 100; i++) {
     		var record = county_data[i];
-			var radius = record[field] * radius_multipler;
+
+    		var area = record[field] * radius_multipler;
+			var radius = parseInt(Math.sqrt(area  / 3.14));
 
 			var circle = L.circle([record.Lat, record.Long_], {
 				color: 'red',
