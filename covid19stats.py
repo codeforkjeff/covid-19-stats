@@ -16,6 +16,7 @@ import sqlite3
 import sys
 import time
 import urllib.request
+import zipfile
 
 Path = namedtuple('Path', ['path', 'date'])
 
@@ -273,6 +274,51 @@ def load_county_population(conn):
     conn.commit()
 
     c.close()
+
+
+@timer
+def load_county_gazetteer(conn):
+    """ load geographic lat/lng data for counties """
+
+    # I forgot we already get lat/lng from csse, so we don' actually need this.
+    # keeping it around anyway
+
+    # https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html
+
+    zip_path = "stage/2019_Gaz_counties_national.zip"
+    path = "stage/2019_Gaz_counties_national.txt"
+
+    if not os.path.exists(path):
+        print("Downloading Gazetter county file into stage dir")
+        with urllib.request.urlopen("https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2019_Gazetteer/2019_Gaz_counties_national.zip") as f:
+            data = f.read()
+            with open(zip_path, 'wb') as output:
+                output.write(data)
+
+        with zipfile.ZipFile(zip_path) as zipf:
+            zipf.extractall("stage/")
+
+
+    with codecs.open(path, encoding='utf8') as f:
+        reader = csv.reader(f, delimiter="\t")
+        rows = [row for row in reader]
+        column_names = [name.strip() for name in rows[0]]
+        rows = rows[1:]
+
+    c = conn.cursor()
+
+    c.execute('''
+        DROP TABLE IF EXISTS raw_county_gazetteer;
+    ''')
+
+    # Create table
+    c.execute('''
+        CREATE TABLE raw_county_gazetteer ('''
+            + ",".join([col + " text" for col in column_names]) +
+        ''')
+    ''')
+
+    c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
 
 
 @timer
@@ -813,6 +859,92 @@ def create_dimensional_tables():
             fc1.date;
     ''')
 
+
+    c.executescript('''
+
+        DROP TABLE IF EXISTS stage_counties_7dayavg_month_change_overall;
+
+        CREATE TABLE stage_counties_7dayavg_month_change_overall AS
+            SELECT
+                t1.FIPS
+                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncrease
+                ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncreasePct
+                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncrease
+                ,(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncreasePct
+            FROM fact_counties_7day_avg t1
+            JOIN fact_counties_7day_avg t2
+                ON t1.FIPS = t2.FIPS
+                AND t1.Date = date(t2.Date, '-30 days')
+            WHERE
+                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
+        ;
+
+        DROP TABLE IF EXISTS stage_counties_two_week_change;
+
+        CREATE TABLE stage_counties_two_week_change AS
+            SELECT
+                t1.FIPS
+                ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS TwoWeekConfirmedIncrease
+                ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS TwoWeekConfirmedIncreasePct
+            FROM fact_counties_ranked t1
+            JOIN fact_counties_ranked t2
+                ON t1.FIPS = t2.FIPS
+                AND t1.Date = date(t2.Date, '-14 days')
+            WHERE
+                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
+        ;
+
+        DROP TABLE IF EXISTS stage_counties_month_change;
+
+        CREATE TABLE stage_counties_month_change AS
+            SELECT
+                t1.FIPS
+                ,t2.Confirmed - coalesce(t1.Confirmed,0) AS MonthConfirmedIncrease
+                ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS MonthConfirmedIncreasePct
+            FROM fact_counties_ranked t1
+            JOIN fact_counties_ranked t2
+                ON t1.FIPS = t2.FIPS
+                AND t1.Date = date(t2.Date, '-30 days')
+            WHERE
+                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
+        ;
+
+        DROP TABLE IF EXISTS fact_counties_latest;
+
+        CREATE TABLE fact_counties_latest AS
+        SELECT
+            t.FIPS,
+            Date,
+            Confirmed,
+            ConfirmedIncrease,
+            CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
+            coalesce(TwoWeekConfirmedIncrease, 0) AS TwoWeekConfirmedIncrease,
+            coalesce(TwoWeekConfirmedIncreasePct, 0) AS TwoWeekConfirmedIncreasePct,
+            coalesce(MonthConfirmedIncrease, 0) AS MonthConfirmedIncrease,
+            coalesce(MonthConfirmedIncreasePct, 0) AS MonthConfirmedIncreasePct,
+            MonthAvg7DayConfirmedIncrease,
+            MonthAvg7DayConfirmedIncreasePct,
+            Deaths,
+            DeathsIncrease,
+            CAST(DeathsIncrease as REAL) / (Deaths - DeathsIncrease) AS DeathsIncreasePct,
+            MonthAvg7DayDeathsIncrease,
+            MonthAvg7DayDeathsIncreasePct
+        FROM fact_counties_ranked t
+        JOIN dim_county c
+            ON t.FIPS = c.FIPS
+        LEFT JOIN stage_counties_7dayavg_month_change_overall o
+            ON t.FIPS = o.FIPS
+        LEFT JOIN stage_counties_two_week_change two
+            ON t.FIPS = two.FIPS
+        LEFT JOIN stage_counties_month_change mon
+            ON t.FIPS = mon.FIPS
+        WHERE 
+            Date = (SELECT MAX(date) FROM fact_counties_ranked)
+            AND c.state is not null
+            AND lower(County) <> 'unassigned'
+            AND County not like 'Out of%'
+    ''')
+
     c.executescript('''
         DROP TABLE stage_csse_filtered;
         DROP TABLE stage_with_population;
@@ -913,63 +1045,28 @@ def export_counties_rate_of_change():
 
     c = conn.cursor()
 
-    c.executescript('''
-
-        DROP TABLE IF EXISTS stage_counties_month_change_overall;
-
-        CREATE TABLE stage_counties_month_change_overall AS
-            SELECT
-                t1.FIPS
-                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncrease
-                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncrease
-            FROM fact_counties_7day_avg t1
-            JOIN fact_counties_7day_avg t2
-                ON t1.FIPS = t2.FIPS
-                AND t1.Date = date(t2.Date, '-30 days')
-            WHERE
-                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
-        ;
-
-        DROP TABLE IF EXISTS fact_counties_latest;
-
-        CREATE TABLE fact_counties_latest AS
-        SELECT
-            t.FIPS,
-            Date,
-            Confirmed,
-            ConfirmedIncrease,
-            CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
-            MonthAvg7DayConfirmedIncrease,
-            Deaths,
-            DeathsIncrease,
-            CAST(DeathsIncrease as REAL) / (Deaths - DeathsIncrease) AS DeathsIncreasePct,
-            MonthAvg7DayDeathsIncrease
-        FROM fact_counties_ranked t
-        JOIN dim_county c
-            ON t.FIPS = c.FIPS
-        LEFT JOIN stage_counties_month_change_overall o
-            ON t.FIPS = o.FIPS
-        WHERE 
-            Date = (SELECT MAX(date) FROM fact_counties_ranked)
-            AND c.state is not null
-            AND lower(County) <> 'unassigned'
-            AND County not like 'Out of%'
-    ''')
-
     c.execute('''
         SELECT
             t.FIPS,
             Date,
             c.County,
             s.StateAbbrev as State,
+            c.Lat,
+            c.Long_,
             Confirmed,
             ConfirmedIncrease,
             ConfirmedIncreasePct,
+            TwoWeekConfirmedIncrease,
+            TwoWeekConfirmedIncreasePct,
+            MonthConfirmedIncrease,
+            MonthConfirmedIncreasePct,
             MonthAvg7DayConfirmedIncrease,
+            MonthAvg7DayConfirmedIncreasePct,
             Deaths,
             DeathsIncrease,
             DeathsIncreasePct,
             MonthAvg7DayDeathsIncrease,
+            MonthAvg7DayDeathsIncreasePct,
             c.Population
         FROM fact_counties_latest t
         JOIN dim_county c
@@ -1062,6 +1159,8 @@ def load_reference_data():
     load_county_population(conn)
 
     load_county_acs_vars(conn)
+
+    load_county_gazetteer(conn)
 
     load_state_info(conn)
 
