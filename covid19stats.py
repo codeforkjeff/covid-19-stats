@@ -883,6 +883,27 @@ def create_dimensional_tables():
 
         --
 
+        DROP TABLE IF EXISTS stage_counties_7dayavg_twoweek_change_overall;
+
+        CREATE TABLE stage_counties_7dayavg_twoweek_change_overall AS
+            SELECT
+                t1.FIPS
+                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS TwoWeekAvg7DayConfirmedIncrease
+                ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS TwoWeekAvg7DayConfirmedIncreasePct
+                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS TwoWeekAvg7DayDeathsIncrease
+                ,(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease AS TwoWeekAvg7DayDeathsIncreasePct
+            FROM fact_counties_7day_avg t1
+            JOIN fact_counties_7day_avg t2
+                ON t1.FIPS = t2.FIPS
+                AND t1.Date = date(t2.Date, '-14 days')
+            WHERE
+                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
+        ;
+
+        CREATE UNIQUE INDEX idx_stage_counties_7dayavg_twoweek_change_overall ON stage_counties_7dayavg_twoweek_change_overall (FIPS);
+
+        --
+
         DROP TABLE IF EXISTS stage_counties_one_week_change;
 
         CREATE TABLE stage_counties_one_week_change AS
@@ -951,6 +972,8 @@ def create_dimensional_tables():
             coalesce(TwoWeekConfirmedIncreasePct, 0) AS TwoWeekConfirmedIncreasePct,
             coalesce(MonthConfirmedIncrease, 0) AS MonthConfirmedIncrease,
             coalesce(MonthConfirmedIncreasePct, 0) AS MonthConfirmedIncreasePct,
+            TwoWeekAvg7DayConfirmedIncrease,
+            TwoWeekAvg7DayConfirmedIncreasePct,
             MonthAvg7DayConfirmedIncrease,
             MonthAvg7DayConfirmedIncreasePct,
             Deaths,
@@ -963,6 +986,8 @@ def create_dimensional_tables():
             ON t.FIPS = c.FIPS
         LEFT JOIN stage_counties_7dayavg_month_change_overall o
             ON t.FIPS = o.FIPS
+        LEFT JOIN stage_counties_7dayavg_twoweek_change_overall two_7dayavg
+            ON t.FIPS = two_7dayavg.FIPS
         LEFT JOIN stage_counties_one_week_change one
             ON t.FIPS = one.FIPS
         LEFT JOIN stage_counties_two_week_change two
@@ -1093,6 +1118,8 @@ def export_counties_rate_of_change():
             TwoWeekConfirmedIncreasePct,
             MonthConfirmedIncrease,
             MonthConfirmedIncreasePct,
+            TwoWeekAvg7DayConfirmedIncrease,
+            TwoWeekAvg7DayConfirmedIncreasePct,
             MonthAvg7DayConfirmedIncrease,
             MonthAvg7DayConfirmedIncreasePct,
             Deaths,
