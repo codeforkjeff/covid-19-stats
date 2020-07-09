@@ -26,7 +26,7 @@
 
   <form id="controls">
     
-    View Top 100 Counties with Highest <select id="view-by">
+    Show 100 Counties with Highest <select id="view-by">
       <option value="day">New Cases in Last Day</option>
       <option value="day_pct">% Change in New Cases in Last Day</option>
       <option value="twoweek">New Cases in Last 2 Weeks</option>
@@ -105,6 +105,7 @@
 
 			circle.bindPopup(
 				'<b>County: ' + record.County + ', ' + record.State + '</b>' +
+				'<br/>' + 'Population: ' + record.Population +
 				'<br/>' + 'Total Cases to Date: ' + record.Confirmed + 
 				'<br/>' + 'New Cases in Last Day: ' + record.ConfirmedIncrease + ' (+' + (record.ConfirmedIncreasePct * 100).toFixed(2) + '%)' +
 				'<br/>' + 'New Cases in Last 2 Weeks: ' + record.TwoWeekConfirmedIncrease.toFixed(2) + ' (+' + (record.TwoWeekConfirmedIncreasePct * 100).toFixed(2) + '%)' +
