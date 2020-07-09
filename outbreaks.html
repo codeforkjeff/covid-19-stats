@@ -212,6 +212,16 @@ $(document).ready(function() {
 					<td></td>
 				</tr>
 				<tr>
+					<td>Change in 7 Day Avg over Last 2 Weeks:</td>
+					<td>${record.TwoWeekAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.TwoWeekAvg7DayConfirmedIncrease.toFixed(0)}</td>
+					<td>${record.TwoWeekAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.TwoWeekAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
+				</tr>
+				<tr>
+					<td>Change in 7 Day Avg over Last Month:</td>
+					<td>${record.MonthAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.MonthAvg7DayConfirmedIncrease.toFixed(0)}</td>
+					<td>${record.MonthAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.MonthAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
+				</tr>
+				<tr>
 					<td>New Cases in Last Day:</td>
 					<td>${record.ConfirmedIncrease}</td>
 					<td>+${(record.ConfirmedIncreasePct * 100).toFixed(2)}%</td>
@@ -230,16 +240,6 @@ $(document).ready(function() {
 					<td>New Cases in Last Month:</td>
 					<td>${record.MonthConfirmedIncrease}</td>
 					<td>+${(record.MonthConfirmedIncreasePct * 100).toFixed(2)}%</td>
-				</tr>
-				<tr>
-					<td>Change in 7 Day Avg over Last 2 Weeks:</td>
-					<td>${record.TwoWeekAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.TwoWeekAvg7DayConfirmedIncrease.toFixed(0)}</td>
-					<td>${record.TwoWeekAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.TwoWeekAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
-				</tr>
-				<tr>
-					<td>Change in 7 Day Avg over Last Month:</td>
-					<td>${record.MonthAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.MonthAvg7DayConfirmedIncrease.toFixed(0)}</td>
-					<td>${record.MonthAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.MonthAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
 				</table>
 				`, {
