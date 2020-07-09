@@ -27,6 +27,23 @@
 			bottom: 0;
 			width: 100%;
 		}
+		.county-table {
+			border-collapse: collapse;
+		}
+		.county-table td {
+			padding: 1px;
+		}
+		.county-table tr:nth-child(1) {
+			font-weight: bold;
+		}
+		.county-table td:nth-child(2) {
+			text-align: right;
+		}
+		.county-table td:nth-child(3) {
+			padding-left: 1em;
+			text-align: right;
+		}
+
 	</style>
 </head>
 <body>
@@ -157,6 +174,46 @@ $(document).ready(function() {
 			});
 
 			circle.bindPopup(
+				`
+				<table class="county-table">
+				<tr>
+					<td>County: ${record.County}, ${record.State}</td>
+					<td></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td>Population:</td>
+					<td>${record.Population}</td>
+					<td></td>
+				</tr>
+				<tr>
+					<td>Total Cases to Date:</td>
+					<td>${record.Confirmed}</td>
+					<td></td>
+				</tr>
+				<tr>
+					<td>New Cases in Last Day:</td>
+					<td>${record.ConfirmedIncrease}</td>
+					<td>+${(record.ConfirmedIncreasePct * 100).toFixed(2)}%</td>
+				</tr>
+				<tr>
+					<td>New Cases in Last Week:</td>
+					<td>${record.OneWeekConfirmedIncrease}</td>
+					<td>+${(record.OneWeekConfirmedIncreasePct * 100).toFixed(2)}%</td>
+				</tr>
+				<tr>
+					<td>New Cases in Last 2 Weeks:</td>
+					<td>${record.TwoWeekConfirmedIncrease}</td>
+					<td>+${(record.TwoWeekConfirmedIncreasePct * 100).toFixed(2)}%</td>
+				</tr>
+				<tr>
+					<td>New Cases in Last Month:</td>
+					<td>${record.MonthConfirmedIncrease}</td>
+					<td>+${(record.MonthConfirmedIncreasePct * 100).toFixed(2)}%</td>
+				</tr>
+				</table>
+				`
+				/*
 				'<b>County: ' + record.County + ', ' + record.State + '</b>' +
 				'<br/>' + 'Population: ' + record.Population +
 				'<br/>' + 'Total Cases to Date: ' + record.Confirmed + 
@@ -165,6 +222,7 @@ $(document).ready(function() {
 				'<br/>' + 'New Cases in Last 2 Weeks: ' + record.TwoWeekConfirmedIncrease.toFixed(2) + ' (+' + (record.TwoWeekConfirmedIncreasePct * 100).toFixed(2) + '%)' +
 				'<br/>' + 'New Cases in Last Month: ' + record.MonthConfirmedIncrease.toFixed(2) +
 					' (+' + (record.MonthConfirmedIncreasePct * 100).toFixed(2) + '%)'
+					*/
 			)
 			.addTo(mymap);
 
