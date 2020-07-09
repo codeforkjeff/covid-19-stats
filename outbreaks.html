@@ -40,18 +40,18 @@
       <option value="day_pct">% Change in New Cases in Last Day</option>
       <option value="week">New Cases in Last Week</option>
       <option value="week_pct">% Change in New Cases in Last Week</option>
-      <option value="twoweek">New Cases in Last 2 Weeks</option>
+      <option value="twoweek" selected>New Cases in Last 2 Weeks</option>
       <option value="twoweek_pct">% Change in New Cases in Last 2 Weeks</option>
-      <option value="month" selected>New Cases in Last Month</option>
+      <option value="month">New Cases in Last Month</option>
       <option value="month_pct">% Change in New Cases in Last Month</option>
     </select>
 
     <span style="margin-left: 2em;">
     Bubble Scale
     <select id="bubble-size">
-    	<option value="small">Small: 1 Case = 2m, 1 Pct Point = 500m</option>
-    	<option value="medium" selected>Medium: 1 Case = 5m, 1 Pct Point = 1000m</option>
-    	<option value="large">Large: 1 Case = 10m, 1 Pct Point = 2000m</option>
+    	<option value="small">Small: 1 Case = 2m, 1 Pct Point = 50m</option>
+    	<option value="medium" selected>Medium: 1 Case = 5m, 1 Pct Point = 100m</option>
+    	<option value="large">Large: 1 Case = 10m, 1 Pct Point = 300m</option>
 	</select>
 	</span>
   </form>
@@ -96,13 +96,13 @@ $(document).ready(function() {
 
 		if(size == 'small') {
 			MULT_NUM_CASES = 2;
-			MULT_PCT = 500;
+			MULT_PCT = 50 * 100;
 		} else if(size == 'medium') {
 			MULT_NUM_CASES = 5;
-			MULT_PCT = 1000;
+			MULT_PCT = 100 * 100;
 		} else if(size == 'large') {
 			MULT_NUM_CASES = 10;
-			MULT_PCT = 2000;
+			MULT_PCT = 300 * 100;
 		}
 	}
 
