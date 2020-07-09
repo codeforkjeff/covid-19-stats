@@ -51,6 +51,7 @@
 </head>
 <body>
 
+	<div id="top">
 	<h2 id="heading"></h2>
 
   <form id="controls">
@@ -81,6 +82,8 @@
 	</span>
   </form>
 
+    </div>
+
 	<div id="map-container">
 		<div id="map"></div>
 	</div>
@@ -100,7 +103,10 @@ $(document).ready(function() {
         };
 	}
 
-    document.getElementById("map-container").style.height = (window.innerHeight - 120) + "px";
+	function resize_map_container() {
+		var top_size = $("#top").height();
+	    document.getElementById("map-container").style.height = (window.innerHeight - top_size - 40) + "px";
+	}
 
 	var mymap = L.map('map').setView([37.0902, -95.7129], 5);
 
@@ -262,6 +268,8 @@ $(document).ready(function() {
 
     	set_bubble_size();
 
+		resize_map_container();
+
     	draw_circles();
     });
 
@@ -273,6 +281,8 @@ $(document).ready(function() {
     	set_bubble_size();
       	draw_circles();
     });
+
+	$(window).resize(resize_map_container);
 });
 
 	</script>
