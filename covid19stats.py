@@ -879,6 +879,10 @@ def create_dimensional_tables():
                 t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
+        CREATE UNIQUE INDEX idx_stage_counties_7dayavg_month_change_overall ON stage_counties_7dayavg_month_change_overall (FIPS);
+
+        --
+
         DROP TABLE IF EXISTS stage_counties_one_week_change;
 
         CREATE TABLE stage_counties_one_week_change AS
@@ -894,6 +898,10 @@ def create_dimensional_tables():
                 t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
+        CREATE UNIQUE INDEX idx_stage_counties_one_week_change ON stage_counties_one_week_change (FIPS);
+
+        --
+
         DROP TABLE IF EXISTS stage_counties_two_week_change;
 
         CREATE TABLE stage_counties_two_week_change AS
@@ -908,6 +916,10 @@ def create_dimensional_tables():
             WHERE
                 t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
+
+        CREATE UNIQUE INDEX idx_stage_counties_two_week_change ON stage_counties_two_week_change (FIPS);
+
+        --
 
         DROP TABLE IF EXISTS stage_counties_month_change;
 
