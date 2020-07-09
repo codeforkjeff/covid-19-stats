@@ -915,26 +915,6 @@ def export_counties_rate_of_change():
 
     c.executescript('''
 
-        DROP TABLE IF EXISTS stage_counties_ranked_by_date;
-
-        CREATE TABLE stage_counties_ranked_by_date AS
-            select
-                t.*,
-                c.County,
-                c.Population,
-                s.StateAbbrev,
-                ROW_NUMBER() OVER (PARTITION BY t.FIPS ORDER BY Date DESC) as rank_latest
-            from fact_counties_ranked t
-            JOIN dim_county c
-                ON t.FIPS = c.FIPS
-            JOIN dim_state s
-                ON c.State = s.State;
-
-        CREATE INDEX idx_stage_counties_ranked_by_date ON stage_counties_ranked_by_date(rank_latest, StateAbbrev, County);
-    ''')
-
-    c.executescript('''
-
         DROP TABLE IF EXISTS stage_counties_month_change_overall;
 
         CREATE TABLE stage_counties_month_change_overall AS
@@ -956,8 +936,6 @@ def export_counties_rate_of_change():
         SELECT
             t.FIPS,
             Date,
-            County,
-            StateAbbrev as State,
             Confirmed,
             ConfirmedIncrease,
             CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
@@ -965,22 +943,40 @@ def export_counties_rate_of_change():
             Deaths,
             DeathsIncrease,
             CAST(DeathsIncrease as REAL) / (Deaths - DeathsIncrease) AS DeathsIncreasePct,
-            MonthAvg7DayDeathsIncrease,
-            Population
-        FROM stage_counties_ranked_by_date t
+            MonthAvg7DayDeathsIncrease
+        FROM fact_counties_ranked t
+        JOIN dim_county c
+            ON t.FIPS = c.FIPS
         LEFT JOIN stage_counties_month_change_overall o
             ON t.FIPS = o.FIPS
         WHERE 
-            rank_latest = 1
-            AND state is not null
+            Date = (SELECT MAX(date) FROM fact_counties_ranked)
+            AND c.state is not null
             AND lower(County) <> 'unassigned'
             AND County not like 'Out of%'
     ''')
 
     c.execute('''
         SELECT
-            *
-        FROM fact_counties_latest;
+            t.FIPS,
+            Date,
+            c.County,
+            s.StateAbbrev as State,
+            Confirmed,
+            ConfirmedIncrease,
+            ConfirmedIncreasePct,
+            MonthAvg7DayConfirmedIncrease,
+            Deaths,
+            DeathsIncrease,
+            DeathsIncreasePct,
+            MonthAvg7DayDeathsIncrease,
+            c.Population
+        FROM fact_counties_latest t
+        JOIN dim_county c
+            ON t.FIPS = c.FIPS
+        JOIN dim_state s
+            ON c.State = s.State
+        ORDER BY t.FIPS;
     ''')
 
     rows = c.fetchall()
@@ -1074,22 +1070,17 @@ def load_reference_data():
 
 def create_exports():
 
-    p1 = multiprocessing.Process(target=export_state_info)
-    p1.start()
+    processes = [
+        multiprocessing.Process(target=export_state_info)
+        ,multiprocessing.Process(target=export_counties_rate_of_change)
+        ,multiprocessing.Process(target=export_counties_7day_avg)
+    ]
 
-    p2 = multiprocessing.Process(target=export_counties_ranked)
-    p2.start()
+    for p in processes:
+        p.start()
 
-    p3 = multiprocessing.Process(target=export_counties_rate_of_change)
-    p3.start()
-
-    p4 = multiprocessing.Process(target=export_counties_7day_avg)
-    p4.start()
-
-    p1.join()
-    p2.join()
-    p3.join()
-    p4.join()
+    for p in processes:
+        p.join()
 
 
 def load_all_data():
