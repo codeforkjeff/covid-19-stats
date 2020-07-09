@@ -5,7 +5,7 @@ This is me just playing around with data. You shouldn't use this for anything ex
 
 # Charts
 
-NO LONGER MAINTAINED: Charts for COVID-19 statistics for the United States, adjusted for population size, by county and by state:
+Charts for COVID-19 statistics for the United States, adjusted for population size, by county and by state (NO LONGER MAINTAINED):
 
 https://codeforkjeff.github.io/covid-19-stats/covid-19-stats.html
 
@@ -14,6 +14,10 @@ Progress by county and by state:
 https://codeforkjeff.github.io/covid-19-stats/counties_progress.html
 
 https://codeforkjeff.github.io/covid-19-stats/states_progress.html
+
+Map of outbreaks:
+
+https://codeforkjeff.github.io/covid-19-stats/outbreaks.html
 
 # Running this
 
