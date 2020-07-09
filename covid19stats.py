@@ -11,6 +11,7 @@ import json
 import multiprocessing
 import os
 import os.path
+import pathlib
 import sqlite3
 import sys
 import time
@@ -81,7 +82,9 @@ def get_rows_from_csse_file(path):
 
 
 @timer
-def load_csse(conn):
+def load_csse():
+
+    conn = get_db_conn()
 
     # assumes COVID-19 repo has been cloned to home directory
     spec = os.path.join(os.getenv("HOME"), 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
@@ -176,6 +179,8 @@ def load_csse(conn):
 
     c.close()
 
+    pathlib.Path('stage/csse.loaded').touch()
+
 
 @timer
 def load_county_population(conn):
@@ -202,17 +207,17 @@ def load_county_population(conn):
     c = conn.cursor()
 
     c.execute('''
-        DROP TABLE IF EXISTS county_population;
+        DROP TABLE IF EXISTS raw_county_population;
     ''')
 
     # Create table
     c.execute('''
-        CREATE TABLE county_population ('''
+        CREATE TABLE raw_county_population ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO county_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
 
     conn.commit()
 
@@ -225,7 +230,7 @@ def load_county_population(conn):
             CTYNAME,
             STATE || COUNTY AS FIPS,
             CAST(POPESTIMATE2019 as INT) as Population
-        FROM county_population;
+        FROM raw_county_population;
     ''')
 
     # Patch NYC: CSSE aggregates all 5 counties of NYC. Reusing code 36061
@@ -259,7 +264,9 @@ def load_county_population(conn):
     ''')
 
 
-    c.execute('''
+    c.executescript('''
+        DROP TABLE nyc_patch;
+
         CREATE INDEX idx_fips_population ON fips_population (FIPS);
     ''')
 
@@ -295,17 +302,17 @@ def load_county_acs_vars(conn):
     c = conn.cursor()
 
     c.execute('''
-        DROP TABLE IF EXISTS county_acs_raw;
+        DROP TABLE IF EXISTS raw_county_acs;
     ''')
 
     # Create table
     c.execute('''
-        CREATE TABLE county_acs_raw ('''
+        CREATE TABLE raw_county_acs ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO county_acs_raw VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
 
     c.executescript('''
         DROP TABLE IF EXISTS county_acs;
@@ -314,7 +321,7 @@ def load_county_acs_vars(conn):
             SELECT
                 *
                 ,state || county AS state_and_county
-            FROM county_acs_raw;
+            FROM raw_county_acs;
 
         CREATE INDEX idx_county_acs ON county_acs (state_and_county)
     ''')
@@ -434,7 +441,9 @@ def load_state_info(conn):
 
 
 @timer
-def create_dimensional_tables(conn):
+def create_dimensional_tables():
+
+    conn = get_db_conn()
 
     c = conn.cursor()
 
@@ -784,9 +793,9 @@ def create_dimensional_tables(conn):
     ''')
 
     c.executescript('''
-        DROP VIEW IF EXISTS fact_counties_7day_avg;
+        DROP TABLE IF EXISTS fact_counties_7day_avg;
 
-        CREATE VIEW fact_counties_7day_avg AS
+        CREATE TABLE fact_counties_7day_avg AS
         select
             fc1.fips,
             fc1.date,
@@ -817,6 +826,8 @@ def create_dimensional_tables(conn):
     conn.commit()
 
     c.close()
+
+    pathlib.Path('stage/dimensional_models.loaded').touch()
 
 
 def row_to_dict(row):
@@ -1048,13 +1059,9 @@ def get_db_conn():
     return conn
 
 
-def load_all_data():
+def load_reference_data():
 
     conn = get_db_conn()
-
-    #### load source data
-
-    load_csse(conn)
 
     load_county_population(conn)
 
@@ -1062,11 +1069,10 @@ def load_all_data():
 
     load_state_info(conn)
 
-    #### transform into dim/fact
+    pathlib.Path('stage/reference_data.loaded').touch()
 
-    create_dimensional_tables(conn)
 
-    #### exports
+def create_exports():
 
     p1 = multiprocessing.Process(target=export_state_info)
     p1.start()
@@ -1085,4 +1091,19 @@ def load_all_data():
     p3.join()
     p4.join()
 
-    conn.close()
+
+def load_all_data():
+
+    #### load source data
+
+    load_csse()
+
+    load_reference_data()
+
+    #### transform into dim/fact
+
+    create_dimensional_tables()
+
+    #### exports
+
+    create_exports()
