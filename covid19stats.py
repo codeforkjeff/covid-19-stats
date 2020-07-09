@@ -808,8 +808,6 @@ def create_dimensional_tables():
             ON fc1.fips = fc2.fips
             AND fc2.date >= date(fc1.date, '-6 days')
             AND fc2.date <= fc1.date
-        WHERE
-            fc1.date >= date((SELECT MAX(date) FROM fact_counties_ranked), '-30 days')
         GROUP BY
             fc1.fips,
             fc1.date;
@@ -947,9 +945,9 @@ def export_counties_rate_of_change():
             FROM fact_counties_7day_avg t1
             JOIN fact_counties_7day_avg t2
                 ON t1.FIPS = t2.FIPS
-                AND t2.RankDateDesc = 1
+                AND t1.Date = date(t2.Date, '-30 days')
             WHERE
-                t1.RankDateAsc = 1
+                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
         DROP TABLE IF EXISTS fact_counties_latest;
@@ -1008,6 +1006,8 @@ def export_counties_7day_avg():
         SELECT
             FIPS, Date, Avg7DayConfirmedIncrease, Avg7DayDeathsIncrease
         FROM fact_counties_7day_avg
+        WHERE
+            Date >= date((SELECT MAX(date) FROM fact_counties_ranked), '-30 days')
         ORDER BY date;
     ''')
 
