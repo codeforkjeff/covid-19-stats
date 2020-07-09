@@ -46,6 +46,14 @@
       <option value="month_pct">% Change in New Cases in Last Month</option>
     </select>
 
+    <span style="margin-left: 2em;">
+    Bubble Scale
+    <select id="bubble-size">
+    	<option value="small">Small: 1 Case = 2m, 1 Pct Point = 500m</option>
+    	<option value="medium" selected>Medium: 1 Case = 5m, 1 Pct Point = 1000m</option>
+    	<option value="large">Large: 1 Case = 10m, 1 Pct Point = 2000m</option>
+	</select>
+	</span>
   </form>
 
 	<div id="map-container">
@@ -54,6 +62,8 @@
 	<script>
 
 $(document).ready(function() {
+	var MULT_NUM_CASES;
+	var MULT_PCT;
 
 	function create_comparator(attr) {
         return function(a,b) {
@@ -80,34 +90,53 @@ $(document).ready(function() {
 	var circles = [];
 	var county_data;
 
+	function set_bubble_size() {
+
+		var size = $("#bubble-size").val()
+
+		if(size == 'small') {
+			MULT_NUM_CASES = 2;
+			MULT_PCT = 500;
+		} else if(size == 'medium') {
+			MULT_NUM_CASES = 5;
+			MULT_PCT = 1000;
+		} else if(size == 'large') {
+			MULT_NUM_CASES = 10;
+			MULT_PCT = 2000;
+		}
+	}
+
+
 	function draw_circles() {
 		var field;
+
 		// radius value is in meters
 		var radius_multipler;
+
 		if($("#view-by").val() == 'day') {
 			field = 'ConfirmedIncrease';
-			radius_multipler = 5;
+			radius_multipler = MULT_NUM_CASES;
 		} else if($("#view-by").val() == 'day_pct') {
 			field = 'ConfirmedIncreasePct';
-			radius_multipler = 1000;
+			radius_multipler = MULT_PCT;
 		} else if($("#view-by").val() == 'week') {
 			field = 'OneWeekConfirmedIncrease';
-			radius_multipler = 5;
+			radius_multipler = MULT_NUM_CASES;
 		} else if($("#view-by").val() == 'week_pct') {
 			field = 'OneWeekConfirmedIncreasePct';
-			radius_multipler = 1000;
+			radius_multipler = MULT_PCT;
 		} else if($("#view-by").val() == 'twoweek') {
 			field = 'TwoWeekConfirmedIncrease';
-			radius_multipler = 5;
+			radius_multipler = MULT_NUM_CASES;
 		} else if($("#view-by").val() == 'twoweek_pct') {
 			field = 'TwoWeekConfirmedIncreasePct';
-			radius_multipler = 1000;
+			radius_multipler = MULT_PCT;
 		} else if($("#view-by").val() == 'month') {
 			field = 'MonthConfirmedIncrease';
-			radius_multipler = 5;
+			radius_multipler = MULT_NUM_CASES;
 		} else if($("#view-by").val() == 'month_pct') {
 			field = 'MonthConfirmedIncreasePct';
-			radius_multipler = 1000;
+			radius_multipler = MULT_PCT;
 		}
     	
     	county_data.sort(create_comparator(field));
@@ -151,6 +180,8 @@ $(document).ready(function() {
 
     	county_data = data;
 
+    	set_bubble_size();
+
     	draw_circles();
     });
 
@@ -158,6 +189,10 @@ $(document).ready(function() {
       	draw_circles();
     });
 
+    $("#bubble-size").change(function() {
+    	set_bubble_size();
+      	draw_circles();
+    });
 });
 
 	</script>
