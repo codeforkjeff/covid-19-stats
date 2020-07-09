@@ -36,6 +36,9 @@
 		.county-table tr:nth-child(1) {
 			font-weight: bold;
 		}
+		.county-table td:nth-child(1) {
+			white-space: nowrap;
+		}
 		.county-table td:nth-child(2) {
 			text-align: right;
 		}
@@ -53,22 +56,27 @@
   <form id="controls">
     
     Show 100 Counties with Highest <select id="view-by">
+      <option value="twoweek_7dayavg" selected>Increase in 7 day avg over Last 2 Weeks</option>
+      <option value="twoweek_7dayavg_pct">Increase in 7 day avg over Last 2 Weeks - % Change</option>
+      <option value="month_7dayavg">Increase in 7 day avg over Last Month</option>
+      <option value="month_7dayavg_pct">Increase in 7 day avg over Last Month - % Change</option>
       <option value="day">New Cases in Last Day</option>
       <option value="day_pct">New Cases in Last Day - % Change</option>
       <option value="week">New Cases in Last Week</option>
       <option value="week_pct">New Cases in Last Week - % Change</option>
-      <option value="twoweek" selected>New Cases in Last 2 Weeks</option>
+      <option value="twoweek">New Cases in Last 2 Weeks</option>
       <option value="twoweek_pct">New Cases in Last 2 Weeks - % Change</option>
       <option value="month">New Cases in Last Month</option>
       <option value="month_pct">New Cases in Last Month - % Change</option>
     </select>
 
     <span style="margin-left: 2em;">
-    Bubble Scale
+    Bubble Size (sq. miles per case or per % pt)
     <select id="bubble-size">
-    	<option value="small">Small: 0.05 mi&sup2; per case or pct pt</option>
-    	<option value="medium" selected>Medium: 0.1 mi&sup2; per case or pct pt</option>
-    	<option value="large">Large: 1.0 mi&sup2; per case or pct pt</option>
+    	<option value="0.05">0.05</option>
+    	<option value="0.1" selected>0.1</option>
+    	<option value="1.0">1.0 </option>
+    	<option value="3.0" selected>3.0</option>
 	</select>
 	</span>
   </form>
@@ -79,8 +87,10 @@
 	<script>
 
 $(document).ready(function() {
-	var MULT_NUM_CASES;
-	var MULT_PCT;
+	const KM_PER_MI = 2589988;
+
+	var mult_num_cases;
+	var mult_pct;
 
 	function create_comparator(attr) {
         return function(a,b) {
@@ -113,54 +123,57 @@ $(document).ready(function() {
 
 		// multipliers are in square meters
 
-		if(size == 'small') {
-			// 0.05mi
-			MULT_NUM_CASES = 129449;
-			MULT_PCT = 129449 * 100;
-		} else if(size == 'medium') {
-			// 0.1mi
-			MULT_NUM_CASES = 258998;
-			MULT_PCT = 258998 * 100;
-		} else if(size == 'large') {
-			// 1mi
-			MULT_NUM_CASES = 2589988;
-			MULT_PCT = 2589988 * 100;
-		}
+		mult_num_cases = parseFloat(size) * KM_PER_MI;
+		mult_pct = mult_num_cases * 100;
 	}
 
 
 	function draw_circles() {
 		var field;
 
+		var view_by = $("#view-by").val();
+
 		// radius value is in meters
 		var radius_multipler;
 
-		if($("#view-by").val() == 'day') {
+		if(view_by == 'twoweek_7dayavg') {
+			field = 'TwoWeekAvg7DayConfirmedIncrease';
+			radius_multipler = mult_num_cases;
+		} else if(view_by == 'twoweek_7dayavg_pct') {
+			field = 'TwoWeekAvg7DayConfirmedIncreasePct';
+			radius_multipler = mult_pct;
+		} else if(view_by == 'month_7dayavg') {
+			field = 'MonthAvg7DayConfirmedIncrease';
+			radius_multipler = mult_num_cases;
+		} else if(view_by == 'month_7dayavg_pct') {
+			field = 'MonthAvg7DayConfirmedIncreasePct';
+			radius_multipler = mult_pct;
+		} else if(view_by == 'day') {
 			field = 'ConfirmedIncrease';
-			radius_multipler = MULT_NUM_CASES;
-		} else if($("#view-by").val() == 'day_pct') {
+			radius_multipler = mult_num_cases;
+		} else if(view_by == 'day_pct') {
 			field = 'ConfirmedIncreasePct';
-			radius_multipler = MULT_PCT;
-		} else if($("#view-by").val() == 'week') {
+			radius_multipler = mult_pct;
+		} else if(view_by == 'week') {
 			field = 'OneWeekConfirmedIncrease';
-			radius_multipler = MULT_NUM_CASES;
-		} else if($("#view-by").val() == 'week_pct') {
+			radius_multipler = mult_num_cases;
+		} else if(view_by == 'week_pct') {
 			field = 'OneWeekConfirmedIncreasePct';
-			radius_multipler = MULT_PCT;
-		} else if($("#view-by").val() == 'twoweek') {
+			radius_multipler = mult_pct;
+		} else if(view_by == 'twoweek') {
 			field = 'TwoWeekConfirmedIncrease';
-			radius_multipler = MULT_NUM_CASES;
-		} else if($("#view-by").val() == 'twoweek_pct') {
+			radius_multipler = mult_num_cases;
+		} else if(view_by == 'twoweek_pct') {
 			field = 'TwoWeekConfirmedIncreasePct';
-			radius_multipler = MULT_PCT;
-		} else if($("#view-by").val() == 'month') {
+			radius_multipler = mult_pct;
+		} else if(view_by == 'month') {
 			field = 'MonthConfirmedIncrease';
-			radius_multipler = MULT_NUM_CASES;
-		} else if($("#view-by").val() == 'month_pct') {
+			radius_multipler = mult_num_cases;
+		} else if(view_by == 'month_pct') {
 			field = 'MonthConfirmedIncreasePct';
-			radius_multipler = MULT_PCT;
+			radius_multipler = mult_pct;
 		}
-    	
+
     	county_data.sort(create_comparator(field));
     	county_data.reverse();
 
@@ -218,18 +231,15 @@ $(document).ready(function() {
 					<td>${record.MonthConfirmedIncrease}</td>
 					<td>+${(record.MonthConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
+				<tr>
+					<td>Change in 7 Day Avg over Last Month:</td>
+					<td>+${record.MonthAvg7DayConfirmedIncrease.toFixed(0)}</td>
+					<td>+${(record.MonthAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
+				</tr>
 				</table>
-				`
-				/*
-				'<b>County: ' + record.County + ', ' + record.State + '</b>' +
-				'<br/>' + 'Population: ' + record.Population +
-				'<br/>' + 'Total Cases to Date: ' + record.Confirmed + 
-				'<br/>' + 'New Cases in Last Day: ' + record.ConfirmedIncrease + ' (+' + (record.ConfirmedIncreasePct * 100).toFixed(2) + '%)' +
-				'<br/>' + 'New Cases in Last Week: ' + record.OneWeekConfirmedIncrease.toFixed(2) + ' (+' + (record.OneWeekConfirmedIncreasePct * 100).toFixed(2) + '%)' +
-				'<br/>' + 'New Cases in Last 2 Weeks: ' + record.TwoWeekConfirmedIncrease.toFixed(2) + ' (+' + (record.TwoWeekConfirmedIncreasePct * 100).toFixed(2) + '%)' +
-				'<br/>' + 'New Cases in Last Month: ' + record.MonthConfirmedIncrease.toFixed(2) +
-					' (+' + (record.MonthConfirmedIncreasePct * 100).toFixed(2) + '%)'
-					*/
+				`, {
+				  maxWidth: "auto"
+				}
 			)
 			.addTo(mymap);
 
