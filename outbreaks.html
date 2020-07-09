@@ -22,13 +22,15 @@
 </head>
 <body>
 
-	<h2>COVID-19 Outbreaks</h2>
+	<h2 id="heading"></h2>
 
   <form id="controls">
     
     Show 100 Counties with Highest <select id="view-by">
       <option value="day">New Cases in Last Day</option>
       <option value="day_pct">% Change in New Cases in Last Day</option>
+      <option value="week">New Cases in Last Week</option>
+      <option value="week_pct">% Change in New Cases in Last Week</option>
       <option value="twoweek">New Cases in Last 2 Weeks</option>
       <option value="twoweek_pct">% Change in New Cases in Last 2 Weeks</option>
       <option value="month" selected>New Cases in Last Month</option>
@@ -72,6 +74,12 @@
 		} else if($("#view-by").val() == 'day_pct') {
 			field = 'ConfirmedIncreasePct';
 			radius_multipler = 10000;
+		} else if($("#view-by").val() == 'week') {
+			field = 'OneWeekConfirmedIncrease';
+			radius_multipler = 2;
+		} else if($("#view-by").val() == 'week_pct') {
+			field = 'OneWeekConfirmedIncreasePct';
+			radius_multipler = 5000;
 		} else if($("#view-by").val() == 'twoweek') {
 			field = 'TwoWeekConfirmedIncrease';
 			radius_multipler = 2;
@@ -108,6 +116,7 @@
 				'<br/>' + 'Population: ' + record.Population +
 				'<br/>' + 'Total Cases to Date: ' + record.Confirmed + 
 				'<br/>' + 'New Cases in Last Day: ' + record.ConfirmedIncrease + ' (+' + (record.ConfirmedIncreasePct * 100).toFixed(2) + '%)' +
+				'<br/>' + 'New Cases in Last Week: ' + record.OneWeekConfirmedIncrease.toFixed(2) + ' (+' + (record.OneWeekConfirmedIncreasePct * 100).toFixed(2) + '%)' +
 				'<br/>' + 'New Cases in Last 2 Weeks: ' + record.TwoWeekConfirmedIncrease.toFixed(2) + ' (+' + (record.TwoWeekConfirmedIncreasePct * 100).toFixed(2) + '%)' +
 				'<br/>' + 'New Cases in Last Month: ' + record.MonthConfirmedIncrease.toFixed(2) +
 					' (+' + (record.MonthConfirmedIncreasePct * 100).toFixed(2) + '%)'
@@ -120,6 +129,9 @@
 	}
 
     $.ajax("data/counties_rate_of_change.json").done(function(data) {
+
+		var date = data[0]['Date'];
+		$("#heading").html("COVID-19 Outbreaks - As of " + date);
 
     	county_data = data;
 
