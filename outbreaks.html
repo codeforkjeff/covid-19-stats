@@ -92,8 +92,13 @@
 $(document).ready(function() {
 	const KM_PER_MI = 2589988;
 
+	var mymap;
+
 	var mult_num_cases;
 	var mult_pct;
+
+	var circles = [];
+	var county_data;
 
 	function create_comparator(attr) {
         return function(a,b) {
@@ -107,21 +112,6 @@ $(document).ready(function() {
 		var top_size = $("#top").height();
 	    document.getElementById("map-container").style.height = (window.innerHeight - top_size - 40) + "px";
 	}
-
-	var mymap = L.map('map').setView([37.0902, -95.7129], 5);
-
-	L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYWJzb2x1dGVseWplZmYiLCJhIjoiY2tjZWR4MHF1MDExczJzbnE5NW9ndjJwNiJ9.qhl-MLfZfDvdm7tdI01NAA', {
-		maxZoom: 18,
-		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
-			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-		id: 'mapbox/light-v10',
-		tileSize: 512,
-		zoomOffset: -1
-	}).addTo(mymap);
-
-	var circles = [];
-	var county_data;
 
 	function set_bubble_size() {
 
@@ -269,6 +259,18 @@ $(document).ready(function() {
     	set_bubble_size();
 
 		resize_map_container();
+
+		mymap = L.map('map').setView([37.0902, -95.7129], 5);
+
+		L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYWJzb2x1dGVseWplZmYiLCJhIjoiY2tjZWR4MHF1MDExczJzbnE5NW9ndjJwNiJ9.qhl-MLfZfDvdm7tdI01NAA', {
+			maxZoom: 18,
+			attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+				'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+				'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+			id: 'mapbox/light-v10',
+			tileSize: 512,
+			zoomOffset: -1
+		}).addTo(mymap);
 
     	draw_circles();
     });
