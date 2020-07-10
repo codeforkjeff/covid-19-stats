@@ -249,7 +249,7 @@ $(document).ready(function() {
 
 	}
 
-    $.ajax("data/counties_rate_of_change.json").done(function(data) {
+    $.ajax("data/counties_rate_of_change.json?" + new Date().getTime()).done(function(data) {
 
 		var date = data[0]['Date'];
 		$("#heading").html("COVID-19 Outbreaks - As of " + date);
