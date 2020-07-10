@@ -867,6 +867,7 @@ def create_dimensional_tables():
         CREATE TABLE stage_counties_7dayavg_month_change_overall AS
             SELECT
                 t1.FIPS
+                ,t2.Date
                 ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncrease
                 ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncreasePct
                 ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncrease
@@ -875,11 +876,9 @@ def create_dimensional_tables():
             JOIN fact_counties_7day_avg t2
                 ON t1.FIPS = t2.FIPS
                 AND t1.Date = date(t2.Date, '-30 days')
-            WHERE
-                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
-        CREATE UNIQUE INDEX idx_stage_counties_7dayavg_month_change_overall ON stage_counties_7dayavg_month_change_overall (FIPS);
+        CREATE UNIQUE INDEX idx_stage_counties_7dayavg_month_change_overall ON stage_counties_7dayavg_month_change_overall (FIPS, Date);
 
         --
 
@@ -888,6 +887,7 @@ def create_dimensional_tables():
         CREATE TABLE stage_counties_7dayavg_twoweek_change_overall AS
             SELECT
                 t1.FIPS
+                ,t2.Date
                 ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS TwoWeekAvg7DayConfirmedIncrease
                 ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS TwoWeekAvg7DayConfirmedIncreasePct
                 ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS TwoWeekAvg7DayDeathsIncrease
@@ -896,11 +896,9 @@ def create_dimensional_tables():
             JOIN fact_counties_7day_avg t2
                 ON t1.FIPS = t2.FIPS
                 AND t1.Date = date(t2.Date, '-14 days')
-            WHERE
-                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
-        CREATE UNIQUE INDEX idx_stage_counties_7dayavg_twoweek_change_overall ON stage_counties_7dayavg_twoweek_change_overall (FIPS);
+        CREATE UNIQUE INDEX idx_stage_counties_7dayavg_twoweek_change_overall ON stage_counties_7dayavg_twoweek_change_overall (FIPS, Date);
 
         --
 
@@ -909,17 +907,16 @@ def create_dimensional_tables():
         CREATE TABLE stage_counties_one_week_change AS
             SELECT
                 t1.FIPS
+                ,t2.Date
                 ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS OneWeekConfirmedIncrease
                 ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS OneWeekConfirmedIncreasePct
             FROM fact_counties_ranked t1
             JOIN fact_counties_ranked t2
                 ON t1.FIPS = t2.FIPS
                 AND t1.Date = date(t2.Date, '-7 days')
-            WHERE
-                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
-        CREATE UNIQUE INDEX idx_stage_counties_one_week_change ON stage_counties_one_week_change (FIPS);
+        CREATE UNIQUE INDEX idx_stage_counties_one_week_change ON stage_counties_one_week_change (FIPS, Date);
 
         --
 
@@ -928,17 +925,16 @@ def create_dimensional_tables():
         CREATE TABLE stage_counties_two_week_change AS
             SELECT
                 t1.FIPS
+                ,t2.Date
                 ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS TwoWeekConfirmedIncrease
                 ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS TwoWeekConfirmedIncreasePct
             FROM fact_counties_ranked t1
             JOIN fact_counties_ranked t2
                 ON t1.FIPS = t2.FIPS
                 AND t1.Date = date(t2.Date, '-14 days')
-            WHERE
-                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
-        CREATE UNIQUE INDEX idx_stage_counties_two_week_change ON stage_counties_two_week_change (FIPS);
+        CREATE UNIQUE INDEX idx_stage_counties_two_week_change ON stage_counties_two_week_change (FIPS, Date);
 
         --
 
@@ -947,22 +943,25 @@ def create_dimensional_tables():
         CREATE TABLE stage_counties_month_change AS
             SELECT
                 t1.FIPS
+                ,t2.Date
                 ,t2.Confirmed - coalesce(t1.Confirmed,0) AS MonthConfirmedIncrease
                 ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS MonthConfirmedIncreasePct
             FROM fact_counties_ranked t1
             JOIN fact_counties_ranked t2
                 ON t1.FIPS = t2.FIPS
                 AND t1.Date = date(t2.Date, '-30 days')
-            WHERE
-                t2.Date = (SELECT MAX(date) FROM fact_counties_ranked)
         ;
 
-        DROP TABLE IF EXISTS fact_counties_latest;
+        CREATE UNIQUE INDEX idx_stage_counties_month_change ON stage_counties_month_change (FIPS, Date);
 
-        CREATE TABLE fact_counties_latest AS
+        --
+
+        DROP TABLE IF EXISTS fact_counties_progress;
+
+        CREATE TABLE fact_counties_progress AS
         SELECT
             t.FIPS,
-            Date,
+            t.Date,
             Confirmed,
             ConfirmedIncrease,
             CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
@@ -985,18 +984,17 @@ def create_dimensional_tables():
         JOIN dim_county c
             ON t.FIPS = c.FIPS
         LEFT JOIN stage_counties_7dayavg_month_change_overall o
-            ON t.FIPS = o.FIPS
+            ON t.FIPS = o.FIPS AND t.Date = o.Date
         LEFT JOIN stage_counties_7dayavg_twoweek_change_overall two_7dayavg
-            ON t.FIPS = two_7dayavg.FIPS
+            ON t.FIPS = two_7dayavg.FIPS AND t.Date = two_7dayavg.Date
         LEFT JOIN stage_counties_one_week_change one
-            ON t.FIPS = one.FIPS
+            ON t.FIPS = one.FIPS AND t.Date = one.Date
         LEFT JOIN stage_counties_two_week_change two
-            ON t.FIPS = two.FIPS
+            ON t.FIPS = two.FIPS AND t.Date = two.Date
         LEFT JOIN stage_counties_month_change mon
-            ON t.FIPS = mon.FIPS
+            ON t.FIPS = mon.FIPS AND t.Date = mon.Date
         WHERE 
-            Date = (SELECT MAX(date) FROM fact_counties_ranked)
-            AND c.state is not null
+            c.state is not null
             AND lower(County) <> 'unassigned'
             AND County not like 'Out of%'
     ''')
@@ -1128,11 +1126,13 @@ def export_counties_rate_of_change():
             MonthAvg7DayDeathsIncrease,
             MonthAvg7DayDeathsIncreasePct,
             c.Population
-        FROM fact_counties_latest t
+        FROM fact_counties_progress t
         JOIN dim_county c
             ON t.FIPS = c.FIPS
         JOIN dim_state s
             ON c.State = s.State
+        WHERE
+            Date = (SELECT MAX(Date) FROM fact_counties_progress)
         ORDER BY t.FIPS;
     ''')
 
