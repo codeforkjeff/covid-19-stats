@@ -54,21 +54,24 @@
 	<div id="top">
 	<h2 id="heading"></h2>
 
+	<p>An outbreak is (imperfectly) defined here as a doubling or more of the 7 day avg of new cases over the last 2 weeks. Only counties that had at least 100 cases 2 weeks ago get considered.
+
   <form id="controls">
     
-    Show 100 Counties with Highest <select id="view-by">
-      <option value="twoweek_7dayavg" selected>Increase in 7 day avg over Last 2 Weeks</option>
-      <option value="twoweek_7dayavg_pct">Increase in 7 day avg over Last 2 Weeks - % Change</option>
-      <option value="month_7dayavg">Increase in 7 day avg over Last Month</option>
-      <option value="month_7dayavg_pct">Increase in 7 day avg over Last Month - % Change</option>
-      <option value="day">New Cases in Last Day</option>
-      <option value="day_pct">New Cases in Last Day - % Change</option>
-      <option value="week">New Cases in Last Week</option>
-      <option value="week_pct">New Cases in Last Week - % Change</option>
-      <option value="twoweek">New Cases in Last 2 Weeks</option>
-      <option value="twoweek_pct">New Cases in Last 2 Weeks - % Change</option>
-      <option value="month">New Cases in Last Month</option>
-      <option value="month_pct">New Cases in Last Month - % Change</option>
+    Display: <select id="view-by">
+      <option value="outbreak" selected>Outbreaks</option>
+      <option value="twoweek_7dayavg">Top 100 Counties with Highest Increase in 7 day avg over Last 2 Weeks</option>
+      <option value="twoweek_7dayavg_pct">Top 100 Counties with Highest Increase in 7 day avg over Last 2 Weeks - % Change</option>
+      <option value="month_7dayavg">Top 100 Counties with Highest Increase in 7 day avg over Last Month</option>
+      <option value="month_7dayavg_pct">Top 100 Counties with Highest Increase in 7 day avg over Last Month - % Change</option>
+      <option value="day">Top 100 Counties with Highest New Cases in Last Day</option>
+      <option value="day_pct">Top 100 Counties with Highest New Cases in Last Day - % Change</option>
+      <option value="week">Top 100 Counties with Highest New Cases in Last Week</option>
+      <option value="week_pct">Top 100 Counties with Highest New Cases in Last Week - % Change</option>
+      <option value="twoweek">Top 100 Counties with Highest New Cases in Last 2 Weeks</option>
+      <option value="twoweek_pct">Top 100 Counties with Highest New Cases in Last 2 Weeks - % Change</option>
+      <option value="month">Top 100 Counties with Highest New Cases in Last Month</option>
+      <option value="month_pct">Top 100 Counties with Highest New Cases in Last Month - % Change</option>
     </select>
 
     <span style="margin-left: 2em;">
@@ -80,6 +83,8 @@
     	<option value="3.0" selected>3.0</option>
 	</select>
 	</span>
+
+	<span style="margin-left: 2em;" id="county-count"></span>
   </form>
 
     </div>
@@ -132,7 +137,10 @@ $(document).ready(function() {
 		// radius value is in meters
 		var radius_multipler;
 
-		if(view_by == 'twoweek_7dayavg') {
+		if(view_by == 'outbreak') {
+			field = 'TwoWeekAvg7DayConfirmedIncrease';
+			radius_multipler = mult_num_cases;
+		} else if(view_by == 'twoweek_7dayavg') {
 			field = 'TwoWeekAvg7DayConfirmedIncrease';
 			radius_multipler = mult_num_cases;
 		} else if(view_by == 'twoweek_7dayavg_pct') {
@@ -176,8 +184,12 @@ $(document).ready(function() {
     	circles.forEach(circle => circle.remove());
     	circles = [];
 
-    	for(var i = 0; i < 100; i++) {
-    		var record = county_data[i];
+		var county_data_filtered =
+			view_by == 'outbreak' ? county_data.filter(record => record.OutbreakFlag) : county_data.slice(0, 100);
+
+		for(var i = 0; i < county_data_filtered.length; i++) {
+
+			var record = county_data_filtered[i];
 
     		var area = record[field] * radius_multipler;
 			var radius = parseInt(Math.sqrt(area  / 3.14));
@@ -194,47 +206,52 @@ $(document).ready(function() {
 				<table class="county-table">
 				<tr>
 					<td>County: ${record.County}, ${record.State}</td>
-					<td></td>
+					<td>${record.OutbreakFlag ? "<span style='color:red'>(Outbreak)</span>" : ""}</td>
 					<td></td>
 				</tr>
 				<tr>
 					<td>Population:</td>
-					<td>${record.Population}</td>
+					<td>${record.Population ? record.Population.toFixed(2): ""}</td>
 					<td></td>
 				</tr>
 				<tr>
 					<td>Total Cases to Date:</td>
-					<td>${record.Confirmed}</td>
+					<td>${record.Confirmed.toFixed(2)}</td>
+					<td></td>
+				</tr>
+				<tr>
+					<td>Current 7 Day Avg of New Cases:</td>
+					<td>${record.Avg7DayConfirmedIncrease.toFixed(2)}</td>
 					<td></td>
 				</tr>
 				<tr>
 					<td>Change in 7 Day Avg over Last 2 Weeks:</td>
-					<td>${record.TwoWeekAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.TwoWeekAvg7DayConfirmedIncrease.toFixed(0)}</td>
+					<td>${record.TwoWeekAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.TwoWeekAvg7DayConfirmedIncrease.toFixed(2)}</td>
 					<td>${record.TwoWeekAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.TwoWeekAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
 				<tr>
 					<td>Change in 7 Day Avg over Last Month:</td>
-					<td>${record.MonthAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.MonthAvg7DayConfirmedIncrease.toFixed(0)}</td>
+					<td>${record.MonthAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.MonthAvg7DayConfirmedIncrease.toFixed(2)}</td>
 					<td>${record.MonthAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.MonthAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
 				<tr>
 					<td>New Cases in Last Day:</td>
-					<td>${record.ConfirmedIncrease}</td>
+					<td>${record.ConfirmedIncrease.toFixed(2)}</td>
 					<td>+${(record.ConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
 				<tr>
 					<td>New Cases in Last Week:</td>
-					<td>${record.OneWeekConfirmedIncrease}</td>
+					<td>${record.OneWeekConfirmedIncrease.toFixed(2)}</td>
 					<td>+${(record.OneWeekConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
 				<tr>
 					<td>New Cases in Last 2 Weeks:</td>
-					<td>${record.TwoWeekConfirmedIncrease}</td>
+					<td>${record.TwoWeekConfirmedIncrease.toFixed(2)}</td>
 					<td>+${(record.TwoWeekConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
 				<tr>
 					<td>New Cases in Last Month:</td>
-					<td>${record.MonthConfirmedIncrease}</td>
+					<td>${record.MonthConfirmedIncrease.toFixed(2)}</td>
 					<td>+${(record.MonthConfirmedIncreasePct * 100).toFixed(2)}%</td>
 				</tr>
 				</table>
@@ -246,6 +263,12 @@ $(document).ready(function() {
 
 			circles.push(circle);
 		}
+
+		var count_text = "";
+		if(view_by == "outbreak") {
+			count_text = county_data_filtered.length +  " counties displayed";
+		}
+		$("#county-count").html(count_text);
 
 	}
 
