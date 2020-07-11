@@ -509,6 +509,46 @@ def create_dimensional_tables():
 
     conn.commit()
 
+    print("dim_date")
+
+    c.executescript('''
+        DROP TABLE IF EXISTS dim_date;
+
+        CREATE TABLE dim_date (
+            Date text,
+            Minus1Day text,
+            Minus7Days text,
+            Minus14Days text,
+            Minus30Days text
+        );
+
+        WITH RECURSIVE dates(Date) AS (
+          VALUES('2020-01-01')
+          UNION ALL
+          SELECT
+            date(date, '+1 day')
+          FROM dates
+          WHERE date < '2020-12-31'
+        )
+        INSERT INTO dim_date (Date)
+        SELECT date FROM dates;
+
+
+        UPDATE dim_date
+        SET
+            Minus1Day = date(date, '-1 day')
+            ,Minus7Days = date(date, '-7 days')
+            ,Minus14Days = date(date, '-14 days')
+            ,Minus30Days = date(date, '-30 days')
+        ;
+
+        CREATE INDEX ix_dim_date1 ON dim_date(Date);
+        CREATE INDEX ix_dim_date2 ON dim_date(Date, Minus1Day);
+        CREATE INDEX ix_dim_date3 ON dim_date(Date, Minus7Days);
+        CREATE INDEX ix_dim_date4 ON dim_date(Date, Minus14Days);
+        CREATE INDEX ix_dim_date5 ON dim_date(Date, Minus30Days);
+    ''')
+
     print("stage_regions_with_data")
 
     c.executescript('''
@@ -754,7 +794,7 @@ def create_dimensional_tables():
         CREATE TABLE stage_with_latest AS
             SELECT
                 t1.*
-                ,date(t1.Date, '+1 day') as DatePlus1Day
+                --,date(t1.Date, '+1 day') as DatePlus1Day
                 ,t2.LatestConfirmedPer1M
                 ,t2.LatestDeathsPer1M
             FROM stage_with_deltas t1
@@ -762,7 +802,7 @@ def create_dimensional_tables():
                 ON t1.FIPS = t2.FIPS;
 
         CREATE INDEX idx_stage_with_latest ON stage_with_latest (FIPS, LatestConfirmedPer1M, LatestDeathsPer1M);
-        CREATE INDEX idx_stage_with_latest2 ON stage_with_latest (FIPS, DatePlus1Day);
+        CREATE INDEX idx_stage_with_latest2 ON stage_with_latest (FIPS, Date);
         CREATE INDEX idx_stage_with_latest3 ON stage_with_latest (LatestConfirmedPer1M);
         CREATE INDEX idx_stage_with_latest4 ON stage_with_latest (LatestDeathsPer1M);
      ''')
@@ -826,11 +866,13 @@ def create_dimensional_tables():
             ,t2.ConfirmedRank
             ,t2.DeathRank
         FROM stage_with_latest t1
+        JOIN dim_date t1_date
+            ON t1.date = t1_date.date
         LEFT JOIN stage_with_rank t2
             ON t1.FIPS = t2.FIPS
         LEFT JOIN stage_with_latest t3
             ON t1.FIPS = t3.FIPS
-            AND t1.Date = t3.DatePlus1Day
+            AND t1_date.Minus1Day = t3.Date
 
         ORDER BY ConfirmedRank;
 
@@ -850,9 +892,11 @@ def create_dimensional_tables():
             ROW_NUMBER() OVER (PARTITION BY fc1.FIPS ORDER BY fc1.Date) AS RankDateAsc,
             ROW_NUMBER() OVER (PARTITION BY fc1.FIPS ORDER BY fc1.Date DESC) AS RankDateDesc
         from fact_counties_ranked fc1
+        join dim_date fc1_date
+            ON fc1.date = fc1_date.date
         join fact_counties_ranked fc2
             ON fc1.fips = fc2.fips
-            AND fc2.date >= date(fc1.date, '-6 days')
+            AND fc2.date > fc1_date.Minus7Days
             AND fc2.date <= fc1.date
         GROUP BY
             fc1.fips,
@@ -875,7 +919,9 @@ def create_dimensional_tables():
             FROM fact_counties_7day_avg t1
             JOIN fact_counties_7day_avg t2
                 ON t1.FIPS = t2.FIPS
-                AND t1.Date = date(t2.Date, '-30 days')
+            JOIN dim_date t2_date
+                ON t2.date = t2_date.date
+                AND t1.Date = t2_date.Minus30Days
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_7dayavg_month_change_overall ON stage_counties_7dayavg_month_change_overall (FIPS, Date);
@@ -895,7 +941,9 @@ def create_dimensional_tables():
             FROM fact_counties_7day_avg t1
             JOIN fact_counties_7day_avg t2
                 ON t1.FIPS = t2.FIPS
-                AND t1.Date = date(t2.Date, '-14 days')
+            JOIN dim_date t2_date
+                ON t2.date = t2_date.date
+                AND t1.Date = t2_date.Minus14Days
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_7dayavg_twoweek_change_overall ON stage_counties_7dayavg_twoweek_change_overall (FIPS, Date);
@@ -913,7 +961,9 @@ def create_dimensional_tables():
             FROM fact_counties_ranked t1
             JOIN fact_counties_ranked t2
                 ON t1.FIPS = t2.FIPS
-                AND t1.Date = date(t2.Date, '-7 days')
+            JOIN dim_date t2_date
+                ON t2.date = t2_date.date
+                AND t1.Date = t2_date.Minus7Days
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_one_week_change ON stage_counties_one_week_change (FIPS, Date);
@@ -931,7 +981,9 @@ def create_dimensional_tables():
             FROM fact_counties_ranked t1
             JOIN fact_counties_ranked t2
                 ON t1.FIPS = t2.FIPS
-                AND t1.Date = date(t2.Date, '-14 days')
+            JOIN dim_date t2_date
+                ON t2.date = t2_date.date
+                AND t1.Date = t2_date.Minus14Days
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_two_week_change ON stage_counties_two_week_change (FIPS, Date);
@@ -949,7 +1001,9 @@ def create_dimensional_tables():
             FROM fact_counties_ranked t1
             JOIN fact_counties_ranked t2
                 ON t1.FIPS = t2.FIPS
-                AND t1.Date = date(t2.Date, '-30 days')
+            JOIN dim_date t2_date
+                ON t2.date = t2_date.date
+                AND t1.Date = t2_date.Minus30Days
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_month_change ON stage_counties_month_change (FIPS, Date);
@@ -1005,7 +1059,9 @@ def create_dimensional_tables():
                 AND t1.Date = t1_avg.Date
             JOIN fact_counties_7day_avg t2
                 ON t1.FIPS = t2.FIPS
-                AND t1.Date = date(t2.Date, '-14 days')
+            JOIN dim_date t2_date
+                ON t2.date = t2_date.date
+                AND t1.Date = t2_date.Minus14Days
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_outbreak ON stage_counties_outbreak (FIPS, Date);
