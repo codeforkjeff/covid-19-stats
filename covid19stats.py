@@ -991,15 +991,37 @@ def create_dimensional_tables():
         CREATE UNIQUE INDEX idx_stage_counties_doubling_time ON stage_counties_doubling_time (FIPS, Date);
 
         --
+
+        DROP TABLE IF EXISTS stage_counties_outbreak;
+
+        CREATE TABLE stage_counties_outbreak AS
+            SELECT
+                t1.FIPS
+                ,t2.Date
+                ,CASE WHEN t1.Confirmed > 100 AND t2.Avg7DayConfirmedIncrease >= t1_avg.Avg7DayConfirmedIncrease * 2 THEN 1 ELSE 0 END AS OutbreakFlag
+            FROM fact_counties_ranked t1
+            JOIN fact_counties_7day_avg t1_avg
+                ON t1.FIPS = t1_avg.FIPS
+                AND t1.Date = t1_avg.Date
+            JOIN fact_counties_7day_avg t2
+                ON t1.FIPS = t2.FIPS
+                AND t1.Date = date(t2.Date, '-14 days')
+        ;
+
+        CREATE UNIQUE INDEX idx_stage_counties_outbreak ON stage_counties_outbreak (FIPS, Date);
+
+        --
+
         DROP TABLE IF EXISTS fact_counties_progress;
 
         CREATE TABLE fact_counties_progress AS
         SELECT
             t.FIPS,
             t.Date,
-            Confirmed,
-            ConfirmedIncrease,
-            CAST(ConfirmedIncrease as REAL) / (Confirmed - ConfirmedIncrease) AS ConfirmedIncreasePct,
+            t.Confirmed,
+            t.ConfirmedIncrease,
+            CAST(t.ConfirmedIncrease as REAL) / (t.Confirmed - t.ConfirmedIncrease) AS ConfirmedIncreasePct,
+            Avg7DayConfirmedIncrease,
             coalesce(OneWeekConfirmedIncrease, 0) AS OneWeekConfirmedIncrease,
             coalesce(OneWeekConfirmedIncreasePct, 0) AS OneWeekConfirmedIncreasePct,
             coalesce(TwoWeekConfirmedIncrease, 0) AS TwoWeekConfirmedIncrease,
@@ -1010,15 +1032,18 @@ def create_dimensional_tables():
             coalesce(TwoWeekAvg7DayConfirmedIncreasePct, 0) as TwoWeekAvg7DayConfirmedIncreasePct,
             coalesce(MonthAvg7DayConfirmedIncrease, 0) AS MonthAvg7DayConfirmedIncrease,
             coalesce(MonthAvg7DayConfirmedIncreasePct, 0) AS MonthAvg7DayConfirmedIncreasePct,
-            Deaths,
-            DeathsIncrease,
-            CAST(DeathsIncrease as REAL) / (Deaths - DeathsIncrease) AS DeathsIncreasePct,
+            t.Deaths,
+            t.DeathsIncrease,
+            CAST(t.DeathsIncrease as REAL) / (t.Deaths - t.DeathsIncrease) AS DeathsIncreasePct,
             MonthAvg7DayDeathsIncrease,
             MonthAvg7DayDeathsIncreasePct,
-            DoublingTimeDays
+            DoublingTimeDays,
+            OutbreakFlag
         FROM fact_counties_ranked t
         JOIN dim_county c
             ON t.FIPS = c.FIPS
+        JOIN fact_counties_7day_avg current_7dayavg
+            ON t.FIPS = current_7dayavg.FIPS AND t.Date = current_7dayavg.Date
         LEFT JOIN stage_counties_7dayavg_month_change_overall o
             ON t.FIPS = o.FIPS AND t.Date = o.Date
         LEFT JOIN stage_counties_7dayavg_twoweek_change_overall two_7dayavg
@@ -1031,6 +1056,8 @@ def create_dimensional_tables():
             ON t.FIPS = mon.FIPS AND t.Date = mon.Date
         LEFT JOIN stage_counties_doubling_time doub
             ON t.FIPS = doub.FIPS AND t.Date = doub.Date
+        LEFT JOIN stage_counties_outbreak outbreak
+            ON t.FIPS = outbreak.FIPS AND t.Date = outbreak.Date
         WHERE 
             c.state is not null
             AND lower(County) <> 'unassigned'
@@ -1151,6 +1178,7 @@ def export_counties_rate_of_change():
             Confirmed,
             ConfirmedIncrease,
             ConfirmedIncreasePct,
+            Avg7DayConfirmedIncrease,
             OneWeekConfirmedIncrease,
             OneWeekConfirmedIncreasePct,
             TwoWeekConfirmedIncrease,
@@ -1166,7 +1194,8 @@ def export_counties_rate_of_change():
             DeathsIncreasePct,
             MonthAvg7DayDeathsIncrease,
             MonthAvg7DayDeathsIncreasePct,
-            c.Population
+            c.Population,
+            OutbreakFlag
         FROM fact_counties_progress t
         JOIN dim_county c
             ON t.FIPS = c.FIPS
