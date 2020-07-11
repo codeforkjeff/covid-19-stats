@@ -958,34 +958,66 @@ def create_dimensional_tables():
 
         DROP TABLE IF EXISTS stage_counties_doubling_time;
 
+        -- empirical approach: this doesn't actually make sense
+
+        -- CREATE TABLE stage_counties_doubling_time AS
+        --     SELECT
+        --         FIPS
+        --         ,Date
+        --         --,Confirmed
+        --         --,EarlierConfirmed
+        --         --,DateDiffDays
+        --         ,ROUND(Confirmed / ((Confirmed - EarlierConfirmed) / CAST(DateDiffDays AS REAL)) / 2, 2) AS DoublingTimeDays
+        --     FROM
+        --     (
+        --         SELECT
+        --             t1.FIPS
+        --             ,t2.Date
+        --             ,t2.Confirmed
+        --             ,t1.Date AS EarlierDate
+        --             ,t1.Confirmed AS EarlierConfirmed
+        --             ,cast(julianday(t2.Date) as int) - cast(julianday(date(t1.Date)) as int) AS DateDiffDays
+        --             ,ROW_NUMBER() OVER (PARTITION BY
+        --                     t1.FIPS
+        --                     ,t2.Date
+        --                 ORDER BY t1.Date DESC) AS Rank
+        --         FROM fact_counties_ranked t1
+        --         JOIN fact_counties_ranked t2
+        --             ON t1.FIPS = t2.FIPS
+        --             AND t1.Date < t2.Date
+        --             AND t1.Confirmed <= t2.Confirmed / 2
+        --     ) T
+        --     WHERE Rank = 1
+        -- ;
+
+        -- Accuracy of this depends on first day of reported cases.
+        -- for King County, WA, our figure is off because Mar 22 is the first day there exists data
+        -- but the actual cases go back farther--King County seems to use Feb 28th.
+
+        -- LOG() function isn't available in stock sqlite
+
         CREATE TABLE stage_counties_doubling_time AS
             SELECT
-                FIPS
-                ,Date
-                --,Confirmed
-                --,EarlierConfirmed
-                --,DateDiffDays
-                ,ROUND(Confirmed / ((Confirmed - EarlierConfirmed) / CAST(DateDiffDays AS REAL)) / 2, 2) AS DoublingTimeDays
-            FROM
-            (
-                SELECT
-                    t1.FIPS
-                    ,t2.Date
-                    ,t2.Confirmed
-                    ,t1.Date AS EarlierDate
-                    ,t1.Confirmed AS EarlierConfirmed
-                    ,cast(julianday(t2.Date) as int) - cast(julianday(date(t1.Date)) as int) AS DateDiffDays
-                    ,ROW_NUMBER() OVER (PARTITION BY
-                            t1.FIPS
-                            ,t2.Date
-                        ORDER BY t1.Date DESC) AS Rank
-                FROM fact_counties_ranked t1
-                JOIN fact_counties_ranked t2
-                    ON t1.FIPS = t2.FIPS
-                    AND t1.Date < t2.Date
-                    AND t1.Confirmed <= t2.Confirmed / 2
-            ) T
-            WHERE Rank = 1
+                t1.FIPS
+                ,t2.Date
+                --,t1.Date as EarlierDate
+                ,(CAST(julianday(t2.Date) as INT) - CAST(julianday(t1.Date) as INT)) AS DaysDiff
+                --,t1.Confirmed AS EarlierConfirmed
+                --,t2.Confirmed AS Confirmed
+                ,(
+                    (CAST(julianday(t2.Date) as INT) - CAST(julianday(t1.Date) as INT)) * LOG(2) /
+                    LOG(CAST(t2.Confirmed as REAL) / t1.Confirmed)
+                ) AS DoublingTimeDays
+            FROM fact_counties_ranked t1
+            JOIN fact_counties_ranked t2
+                ON t1.FIPS = t2.FIPS
+                AND t1.Date < t2.Date
+                AND t1.Date =
+                    (select MIN(Date) FROM fact_counties_ranked t3 WHERE t1.FIPS = t3.FIPS and t3.Confirmed > 0)
+            WHERE
+                t1.Confirmed > 0
+                and t2.Confirmed > 0
+                and t1.Confirmed <> t2.Confirmed
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_doubling_time ON stage_counties_doubling_time (FIPS, Date);
