@@ -59,6 +59,18 @@ def load_county_population(conn):
         FROM raw_county_population;
     ''')
 
+    # Patch Puerto Rico
+    c.execute('''
+        INSERT INTO final_fips_population
+        SELECT
+            NAME, 
+            NAME,
+            '00072',
+            CAST(POPESTIMATE2019 as INT) as Population
+        FROM raw_nst_population
+        WHERE NAME = 'Puerto Rico'
+    ''')
+
     # Patch NYC: CSSE aggregates all 5 counties of NYC. Reusing code 36061
     # is misleading, IMO, but that's how it is. so we patch our pop count
     # to follow suit

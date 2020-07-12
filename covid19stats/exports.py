@@ -114,7 +114,9 @@ def export_counties_rate_of_change():
             MonthAvg7DayDeathsIncrease,
             MonthAvg7DayDeathsIncreasePct,
             c.Population,
-            OutbreakFlag
+            CasesPer100k,
+            OneWeekCasesPer100kChange,
+            OneWeekCasesPer100kChangePct
         FROM fact_counties_progress t
         JOIN dim_county c
             ON t.FIPS = c.FIPS
