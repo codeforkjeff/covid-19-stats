@@ -113,12 +113,12 @@ def load_csse():
     c.execute("PRAGMA temp_store = MEMORY")
 
     c.execute('''
-        DROP TABLE IF EXISTS csse;
+        DROP TABLE IF EXISTS final_csse;
     ''')
 
     # Create table
     c.execute('''
-        CREATE TABLE csse (
+        CREATE TABLE final_csse (
             Date text,
             FIPS text,
             Admin2 text,
@@ -136,12 +136,12 @@ def load_csse():
             )
     ''')
 
-    c.executemany('INSERT INTO csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
+    c.executemany('INSERT INTO final_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
 
     conn.commit()
 
     c.execute('''
-        UPDATE csse
+        UPDATE final_csse
         SET ShouldHaveFIPS = 1
         WHERE
             Country_Region = 'US'
@@ -154,7 +154,7 @@ def load_csse():
 
     # fix some FIPS codes that aren't properly zero-padded
     c.execute('''
-        UPDATE csse
+        UPDATE final_csse
         SET
             FIPS = substr('0000000000' || FIPS, -5, 5)
         WHERE
@@ -164,7 +164,7 @@ def load_csse():
     ''')
 
     c.execute('''
-        CREATE INDEX idx ON csse (FIPS);
+        CREATE INDEX idx ON final_csse (FIPS);
     ''')
 
     conn.commit()
@@ -173,7 +173,7 @@ def load_csse():
     # -- I think these are actually okay to let by.
     #
     # select distinct combined_key
-    # from csse
+    # from final_csse
     # where
     #     shouldhavefips = 1
     #     and (fips is null or length(fips) <> 5 or fips = '00000')
@@ -222,10 +222,10 @@ def load_county_population(conn):
 
     conn.commit()
 
-    c.execute('DROP TABLE IF EXISTS fips_population')
+    c.execute('DROP TABLE IF EXISTS final_fips_population')
 
     c.execute('''
-        CREATE TABLE fips_population
+        CREATE TABLE final_fips_population
         AS SELECT
             STNAME,
             CTYNAME,
@@ -246,7 +246,7 @@ def load_county_population(conn):
         CREATE TABLE nyc_patch
         AS SELECT
             SUM(Population) as Population
-        FROM fips_population
+        FROM final_fips_population
         WHERE FIPS IN (
             '36061', -- New York County
             '36005', -- Bronx County
@@ -257,7 +257,7 @@ def load_county_population(conn):
     ''')
 
     c.execute('''
-        UPDATE fips_population
+        UPDATE final_fips_population
         SET
             Population = (SELECT Population from nyc_patch)
         WHERE
@@ -268,7 +268,7 @@ def load_county_population(conn):
     c.executescript('''
         DROP TABLE nyc_patch;
 
-        CREATE INDEX idx_fips_population ON fips_population (FIPS);
+        CREATE INDEX idx_final_fips_population ON final_fips_population (FIPS);
     ''')
 
     conn.commit()
@@ -361,15 +361,15 @@ def load_county_acs_vars(conn):
     c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
 
     c.executescript('''
-        DROP TABLE IF EXISTS county_acs;
+        DROP TABLE IF EXISTS final_county_acs;
 
-        CREATE TABLE county_acs AS
+        CREATE TABLE final_county_acs AS
             SELECT
                 *
                 ,state || county AS state_and_county
             FROM raw_county_acs;
 
-        CREATE INDEX idx_county_acs ON county_acs (state_and_county)
+        CREATE INDEX idx_final_county_acs ON final_county_acs (state_and_county)
     ''')
 
     conn.commit()
@@ -401,26 +401,26 @@ def load_state_info(conn):
     c = conn.cursor()
 
     c.execute('''
-        DROP TABLE IF EXISTS nst_population;
+        DROP TABLE IF EXISTS raw_nst_population;
     ''')
 
     # Create table
     c.execute('''
-        CREATE TABLE nst_population ('''
+        CREATE TABLE raw_nst_population ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO nst_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
 
     conn.commit()
 
-    c.execute('DROP TABLE IF EXISTS state_abbreviations')
+    c.execute('DROP TABLE IF EXISTS raw_state_abbreviations')
 
-    c.execute('CREATE TABLE state_abbreviations ( State text , Abbreviation text )')
+    c.execute('CREATE TABLE raw_state_abbreviations ( State text , Abbreviation text )')
 
     c.execute('''
-        INSERT INTO state_abbreviations
+        INSERT INTO raw_state_abbreviations
         SELECT *
         FROM
         (
@@ -479,7 +479,7 @@ def load_state_info(conn):
         ) AS t;
     ''')
 
-    c.execute('CREATE INDEX idx_state_abbreviations ON state_abbreviations (State)')
+    c.execute('CREATE INDEX idx_raw_state_abbreviations ON raw_state_abbreviations (State)')
 
     conn.commit()
 
@@ -491,6 +491,24 @@ def create_dimensional_tables():
 
     conn = get_db_conn()
 
+    create_dim_state(conn)
+
+    create_dim_date(conn)
+
+    create_dim_county_and_fact_counties_base(conn)
+
+    # this is obsolete. going forward, nothing should use this.
+    create_fact_counties_ranked(conn)
+
+    create_fact_counties_progress(conn)
+
+    pathlib.Path('stage/dimensional_models.loaded').touch()
+
+
+def create_dim_state(conn):
+
+    print("dim_state")
+
     c = conn.cursor()
 
     c.execute('DROP TABLE IF EXISTS dim_state')
@@ -501,15 +519,20 @@ def create_dimensional_tables():
             NAME AS State
             ,Abbreviation AS StateAbbrev
             ,CAST(POPESTIMATE2019 as INT) as Population
-        FROM nst_population t1
-        LEFT JOIN state_abbreviations t2
+        FROM raw_nst_population t1
+        LEFT JOIN raw_state_abbreviations t2
             ON t1.NAME = t2.State
         WHERE CAST(t1.STATE AS INT) > 0
     ''')
 
     conn.commit()
 
+
+def create_dim_date(conn):
+
     print("dim_date")
+
+    c = conn.cursor()
 
     c.executescript('''
         DROP TABLE IF EXISTS dim_date;
@@ -549,6 +572,13 @@ def create_dimensional_tables():
         CREATE INDEX ix_dim_date5 ON dim_date(Date, Minus30Days);
     ''')
 
+    conn.commit()
+
+
+def create_dim_county_and_fact_counties_base(conn):
+
+    c = conn.cursor()
+
     print("stage_regions_with_data")
 
     c.executescript('''
@@ -557,7 +587,7 @@ def create_dimensional_tables():
         CREATE TABLE stage_regions_with_data AS
             -- only take U.S. regions that have data
             select FIPS
-            from csse
+            from final_csse
             where
                 Country_Region = 'US'
                 AND FIPS <> '00078' -- duplicate for Virgin Islands
@@ -579,7 +609,7 @@ def create_dimensional_tables():
         CREATE TABLE stage_csse_filtered_pre AS
             SELECT
                 t1.*
-            FROM csse t1
+            FROM final_csse t1
             WHERE
                 ShouldHaveFIPS = 1
                 AND EXISTS (SELECT 1 FROM stage_regions_with_data t2 WHERE t1.FIPS = t2.FIPS);
@@ -702,13 +732,111 @@ def create_dimensional_tables():
             CP03_2014_2018_062E AS MedianIncome,
             CP05_2014_2018_018E AS MedianAge
         FROM MostRecent t1
-        LEFT JOIN fips_population t2
+        LEFT JOIN final_fips_population t2
             ON t1.FIPS = t2.FIPS
-        LEFT JOIN county_acs t3
+        LEFT JOIN final_county_acs t3
             ON t1.FIPS = t3.state_and_county
         WHERE t1.DateRank = 1
     ''')
 
+    c.executescript('''
+        DROP TABLE IF EXISTS fact_counties_base;
+
+        CREATE TABLE fact_counties_base (
+            Date TEXT,
+            FIPS TEXT,
+            Confirmed INT,
+            ConfirmedIncrease INT,
+            Deaths INT,
+            DeathsIncrease INT,
+            Recovered INT,
+            Active INT,
+            Avg7DayConfirmedIncrease REAL,
+            Avg7DayDeathsIncrease REAL
+        );
+
+        INSERT INTO fact_counties_base (
+            Date,
+            FIPS,
+            Confirmed,
+            ConfirmedIncrease,
+            Deaths,
+            DeathsIncrease,
+            Recovered,
+            Active,
+            Avg7DayConfirmedIncrease,
+            Avg7DayDeathsIncrease
+        )
+        SELECT
+            t1.Date,
+            t1.FIPS,
+            t1.Confirmed,
+            t1.Confirmed - earlier.Confirmed AS ConfirmedIncrease,
+            t1.Deaths,
+            t1.Deaths - earlier.Deaths AS DeathsIncrease,
+            t1.Recovered,
+            t1.Active,
+            NULL AS Avg7DayConfirmedIncrease,
+            NULL AS Avg7DayDeathsIncrease
+        FROM stage_csse_filtered t1
+        JOIN dim_date t1_date
+            ON t1.Date = t1_date.Date
+        LEFT JOIN stage_csse_filtered earlier
+            ON t1.FIPS = earlier.FIPS
+            AND t1_date.Minus1Day = earlier.Date
+        ;
+        
+        CREATE UNIQUE INDEX idx_fact_counties_base ON fact_counties_base (FIPS, Date);
+     ''')
+
+
+    c.executescript('''
+        DROP TABLE IF EXISTS stage_counties_7day_avg;
+
+        CREATE TABLE stage_counties_7day_avg AS
+        select
+            fc1.fips,
+            fc1.date,
+            sum(fc2.ConfirmedIncrease) / 7.0 as Avg7DayConfirmedIncrease, 
+            sum(fc2.DeathsIncrease) / 7.0 as Avg7DayDeathsIncrease
+        from fact_counties_base fc1
+        join dim_date fc1_date
+            ON fc1.date = fc1_date.date
+        join fact_counties_base fc2
+            ON fc1.fips = fc2.fips
+            AND fc2.date > fc1_date.Minus7Days
+            AND fc2.date <= fc1.date
+        GROUP BY
+            fc1.fips,
+            fc1.date;
+
+        CREATE UNIQUE INDEX idx_stage_counties_7day_avg ON stage_counties_7day_avg (FIPS, Date);
+
+        UPDATE fact_counties_base
+        SET
+            Avg7DayConfirmedIncrease = (
+                SELECT Avg7DayConfirmedIncrease
+                FROM stage_counties_7day_avg t
+                WHERE
+                    fact_counties_base.FIPS = t.FIPS
+                    AND fact_counties_base.Date = t.Date
+                )
+            ,Avg7DayDeathsIncrease = (
+                SELECT Avg7DayDeathsIncrease
+                FROM stage_counties_7day_avg t
+                WHERE
+                    fact_counties_base.FIPS = t.FIPS
+                    AND fact_counties_base.Date = t.Date
+                )
+        ;
+    ''')
+
+    conn.commit()
+
+
+def create_fact_counties_ranked(conn):
+
+    c = conn.cursor()
 
     print("stage_with_population")
 
@@ -724,7 +852,7 @@ def create_dimensional_tables():
                 ,CAST(Confirmed AS REAL) / (CAST(Population AS REAL) / 1000000) as ConfirmedPer1M
                 ,CAST(Deaths AS REAL) / (CAST(Population AS REAL) / 1000000) as DeathsPer1M
                 ,ROW_NUMBER() OVER (PARTITION BY t1.FIPS ORDER BY Date DESC) As DateRank
-            FROM stage_csse_filtered t1
+            FROM fact_counties_base t1
             LEFT JOIN dim_county t2
                 ON t1.FIPS = t2.FIPS;
 
@@ -741,7 +869,6 @@ def create_dimensional_tables():
         CREATE INDEX idx_stage_with_population2 ON stage_with_population (FIPS, DateRankMinus1);
         CREATE INDEX idx_stage_with_population3 ON stage_with_population (FIPS, DateRankMinus5);
      ''')
-
 
     print("stage_with_deltas")
 
@@ -880,29 +1007,15 @@ def create_dimensional_tables():
 
     ''')
 
-    c.executescript('''
-        DROP TABLE IF EXISTS fact_counties_7day_avg;
+    conn.commit()
 
-        CREATE TABLE fact_counties_7day_avg AS
-        select
-            fc1.fips,
-            fc1.date,
-            sum(fc2.ConfirmedIncrease) / 7.0 as Avg7DayConfirmedIncrease, 
-            sum(fc2.DeathsIncrease) / 7.0 as Avg7DayDeathsIncrease,
-            ROW_NUMBER() OVER (PARTITION BY fc1.FIPS ORDER BY fc1.Date) AS RankDateAsc,
-            ROW_NUMBER() OVER (PARTITION BY fc1.FIPS ORDER BY fc1.Date DESC) AS RankDateDesc
-        from fact_counties_ranked fc1
-        join dim_date fc1_date
-            ON fc1.date = fc1_date.date
-        join fact_counties_ranked fc2
-            ON fc1.fips = fc2.fips
-            AND fc2.date > fc1_date.Minus7Days
-            AND fc2.date <= fc1.date
-        GROUP BY
-            fc1.fips,
-            fc1.date;
-    ''')
 
+
+def create_fact_counties_progress(conn):
+
+    print("fact_counties_progress")
+
+    c = conn.cursor()
 
     c.executescript('''
 
@@ -916,8 +1029,8 @@ def create_dimensional_tables():
                 ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncreasePct
                 ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncrease
                 ,(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncreasePct
-            FROM fact_counties_7day_avg t1
-            JOIN fact_counties_7day_avg t2
+            FROM fact_counties_base t1
+            JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
             JOIN dim_date t2_date
                 ON t2.date = t2_date.date
@@ -938,8 +1051,8 @@ def create_dimensional_tables():
                 ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS TwoWeekAvg7DayConfirmedIncreasePct
                 ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS TwoWeekAvg7DayDeathsIncrease
                 ,(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease AS TwoWeekAvg7DayDeathsIncreasePct
-            FROM fact_counties_7day_avg t1
-            JOIN fact_counties_7day_avg t2
+            FROM fact_counties_base t1
+            JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
             JOIN dim_date t2_date
                 ON t2.date = t2_date.date
@@ -958,8 +1071,8 @@ def create_dimensional_tables():
                 ,t2.Date
                 ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS OneWeekConfirmedIncrease
                 ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS OneWeekConfirmedIncreasePct
-            FROM fact_counties_ranked t1
-            JOIN fact_counties_ranked t2
+            FROM fact_counties_base t1
+            JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
             JOIN dim_date t2_date
                 ON t2.date = t2_date.date
@@ -978,8 +1091,8 @@ def create_dimensional_tables():
                 ,t2.Date
                 ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS TwoWeekConfirmedIncrease
                 ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS TwoWeekConfirmedIncreasePct
-            FROM fact_counties_ranked t1
-            JOIN fact_counties_ranked t2
+            FROM fact_counties_base t1
+            JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
             JOIN dim_date t2_date
                 ON t2.date = t2_date.date
@@ -998,8 +1111,8 @@ def create_dimensional_tables():
                 ,t2.Date
                 ,t2.Confirmed - coalesce(t1.Confirmed,0) AS MonthConfirmedIncrease
                 ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS MonthConfirmedIncreasePct
-            FROM fact_counties_ranked t1
-            JOIN fact_counties_ranked t2
+            FROM fact_counties_base t1
+            JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
             JOIN dim_date t2_date
                 ON t2.date = t2_date.date
@@ -1033,8 +1146,8 @@ def create_dimensional_tables():
                             t1.FIPS
                             ,t2.Date
                         ORDER BY t1.Date DESC) AS Rank
-                FROM fact_counties_ranked t1
-                JOIN fact_counties_ranked t2
+                FROM fact_counties_base t1
+                JOIN fact_counties_base t2
                     ON t1.FIPS = t2.FIPS
                     AND t1.Date < t2.Date
                     AND t1.Confirmed <= t2.Confirmed / 2
@@ -1052,12 +1165,9 @@ def create_dimensional_tables():
             SELECT
                 t1.FIPS
                 ,t2.Date
-                ,CASE WHEN t1.Confirmed > 100 AND t2.Avg7DayConfirmedIncrease >= t1_avg.Avg7DayConfirmedIncrease * 2 THEN 1 ELSE 0 END AS OutbreakFlag
-            FROM fact_counties_ranked t1
-            JOIN fact_counties_7day_avg t1_avg
-                ON t1.FIPS = t1_avg.FIPS
-                AND t1.Date = t1_avg.Date
-            JOIN fact_counties_7day_avg t2
+                ,CASE WHEN t1.Confirmed > 100 AND t2.Avg7DayConfirmedIncrease >= t1.Avg7DayConfirmedIncrease * 2 THEN 1 ELSE 0 END AS OutbreakFlag
+            FROM fact_counties_base t1
+            JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
             JOIN dim_date t2_date
                 ON t2.date = t2_date.date
@@ -1070,7 +1180,34 @@ def create_dimensional_tables():
 
         DROP TABLE IF EXISTS fact_counties_progress;
 
-        CREATE TABLE fact_counties_progress AS
+        CREATE TABLE fact_counties_progress (
+            FIPS TEXT,
+            Date TEXT,
+            Confirmed INT,
+            ConfirmedIncrease INT,
+            ConfirmedIncreasePct REAL,
+            Avg7DayConfirmedIncrease REAL,
+            OneWeekConfirmedIncrease INT,
+            OneWeekConfirmedIncreasePct REAL,
+            TwoWeekConfirmedIncrease INT,
+            TwoWeekConfirmedIncreasePct REAL,
+            MonthConfirmedIncrease INT,
+            MonthConfirmedIncreasePct REAL,
+            TwoWeekAvg7DayConfirmedIncrease REAL,
+            TwoWeekAvg7DayConfirmedIncreasePct REAL,
+            MonthAvg7DayConfirmedIncrease REAL,
+            MonthAvg7DayConfirmedIncreasePct REAL,
+            Deaths INT,
+            DeathsIncrease INT,
+            DeathsIncreasePct REAL,
+            MonthAvg7DayDeathsIncrease REAL,
+            MonthAvg7DayDeathsIncreasePct REAL,
+            DoublingTimeDays REAL,
+            TwoWeekCasesPer100k REAL,
+            OutbreakFlag INT
+        );
+
+        INSERT INTO fact_counties_progress
         SELECT
             t.FIPS,
             t.Date,
@@ -1096,11 +1233,9 @@ def create_dimensional_tables():
             DoublingTimeDays,
             TwoWeekConfirmedIncrease * cast(100000 as real) / c.Population as TwoWeekCasesPer100k,
             OutbreakFlag
-        FROM fact_counties_ranked t
+        FROM fact_counties_base t
         JOIN dim_county c
             ON t.FIPS = c.FIPS
-        JOIN fact_counties_7day_avg current_7dayavg
-            ON t.FIPS = current_7dayavg.FIPS AND t.Date = current_7dayavg.Date
         LEFT JOIN stage_counties_7dayavg_month_change_overall o
             ON t.FIPS = o.FIPS AND t.Date = o.Date
         LEFT JOIN stage_counties_7dayavg_twoweek_change_overall two_7dayavg
@@ -1115,28 +1250,12 @@ def create_dimensional_tables():
             ON t.FIPS = doub.FIPS AND t.Date = doub.Date
         LEFT JOIN stage_counties_outbreak outbreak
             ON t.FIPS = outbreak.FIPS AND t.Date = outbreak.Date
-        WHERE 
-            c.state is not null
-            AND lower(County) <> 'unassigned'
-            AND County not like 'Out of%'
         ;
 
         CREATE UNIQUE INDEX idx_fact_counties_progress ON fact_counties_progress (FIPS, Date);
     ''')
 
-    c.executescript('''
-        DROP TABLE stage_csse_filtered;
-        DROP TABLE stage_with_population;
-        DROP TABLE stage_with_deltas;
-        DROP TABLE stage_latest;
-        DROP TABLE stage_with_latest;
-        DROP TABLE stage_with_rank;
-    ''')
     conn.commit()
-
-    c.close()
-
-    pathlib.Path('stage/dimensional_models.loaded').touch()
 
 
 def row_to_dict(row):
@@ -1285,9 +1404,9 @@ def export_counties_7day_avg():
     c.execute('''
         SELECT
             FIPS, Date, Avg7DayConfirmedIncrease, Avg7DayDeathsIncrease
-        FROM fact_counties_7day_avg
+        FROM fact_counties_base
         WHERE
-            Date >= date((SELECT MAX(date) FROM fact_counties_ranked), '-30 days')
+            Date >= date((SELECT MAX(date) FROM fact_counties_base), '-30 days')
         ORDER BY date;
     ''')
 
