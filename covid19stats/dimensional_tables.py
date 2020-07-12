@@ -655,24 +655,9 @@ def create_fact_counties_progress(conn):
 
         --
 
-        DROP TABLE IF EXISTS stage_counties_outbreak;
+    ''')
 
-        CREATE TABLE stage_counties_outbreak AS
-            SELECT
-                t1.FIPS
-                ,t2.Date
-                ,CASE WHEN t1.Confirmed > 100 AND t2.Avg7DayConfirmedIncrease >= t1.Avg7DayConfirmedIncrease * 2 THEN 1 ELSE 0 END AS OutbreakFlag
-            FROM fact_counties_base t1
-            JOIN fact_counties_base t2
-                ON t1.FIPS = t2.FIPS
-            JOIN dim_date t2_date
-                ON t2.date = t2_date.date
-                AND t1.Date = t2_date.Minus14Days
-        ;
-
-        CREATE UNIQUE INDEX idx_stage_counties_outbreak ON stage_counties_outbreak (FIPS, Date);
-
-        --
+    c.executescript('''
 
         DROP TABLE IF EXISTS fact_counties_progress;
 
@@ -699,8 +684,9 @@ def create_fact_counties_progress(conn):
             MonthAvg7DayDeathsIncrease REAL,
             MonthAvg7DayDeathsIncreasePct REAL,
             DoublingTimeDays REAL,
-            TwoWeekCasesPer100k REAL,
-            OutbreakFlag INT
+            CasesPer100k REAL,
+            OneWeekCasesPer100kChange REAL,
+            OneWeekCasesPer100kChangePct REAL
         );
 
         INSERT INTO fact_counties_progress
@@ -727,8 +713,9 @@ def create_fact_counties_progress(conn):
             MonthAvg7DayDeathsIncrease,
             MonthAvg7DayDeathsIncreasePct,
             DoublingTimeDays,
-            TwoWeekConfirmedIncrease * cast(100000 as real) / c.Population as TwoWeekCasesPer100k,
-            OutbreakFlag
+            coalesce(TwoWeekConfirmedIncrease, 0) * cast(100000 as real) / c.Population as CasesPer100k,
+            NULL AS OneWeekCasesPer100kChange,
+            NULL AS OneWeekCasesPer100kChangePct
         FROM fact_counties_base t
         JOIN dim_county c
             ON t.FIPS = c.FIPS
@@ -744,11 +731,48 @@ def create_fact_counties_progress(conn):
             ON t.FIPS = mon.FIPS AND t.Date = mon.Date
         LEFT JOIN stage_counties_doubling_time doub
             ON t.FIPS = doub.FIPS AND t.Date = doub.Date
-        LEFT JOIN stage_counties_outbreak outbreak
-            ON t.FIPS = outbreak.FIPS AND t.Date = outbreak.Date
         ;
 
         CREATE UNIQUE INDEX idx_fact_counties_progress ON fact_counties_progress (FIPS, Date);
+    ''')
+
+    c.executescript('''
+
+        DROP TABLE IF EXISTS stage_counties_cases_per_100k_change;
+
+        CREATE TABLE stage_counties_cases_per_100k_change AS
+            SELECT
+                t1.FIPS
+                ,t2.Date
+                ,coalesce(t2.CasesPer100k, 0) - coalesce(t1.CasesPer100k, 0) AS OneWeekCasesPer100kChange
+                ,(coalesce(t2.CasesPer100k, 0) - coalesce(t1.CasesPer100k, 0)) / t1.CasesPer100k AS OneWeekCasesPer100kChangePct
+            FROM fact_counties_progress t1
+            JOIN fact_counties_progress t2
+                ON t1.FIPS = t2.FIPS
+            JOIN dim_date t2_date
+                ON t2.date = t2_date.date
+                AND t1.Date = t2_date.Minus7Days
+        ;
+
+        CREATE UNIQUE INDEX idx_stage_counties_cases_per_100k_change ON stage_counties_cases_per_100k_change (FIPS, Date);
+
+        UPDATE fact_counties_progress
+        SET
+            OneWeekCasesPer100kChange = coalesce((
+                SELECT OneWeekCasesPer100kChange
+                FROM stage_counties_cases_per_100k_change t
+                WHERE
+                    fact_counties_progress.FIPS = t.FIPS
+                    AND fact_counties_progress.Date = t.Date
+                ), 0)
+            ,OneWeekCasesPer100kChangePct = coalesce((
+                SELECT coalesce(OneWeekCasesPer100kChangePct, 0)
+                FROM stage_counties_cases_per_100k_change t
+                WHERE
+                    fact_counties_progress.FIPS = t.FIPS
+                    AND fact_counties_progress.Date = t.Date
+                ), 0)
+        ;
     ''')
 
     conn.commit()
