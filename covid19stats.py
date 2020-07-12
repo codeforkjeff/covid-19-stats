@@ -1094,6 +1094,7 @@ def create_dimensional_tables():
             MonthAvg7DayDeathsIncrease,
             MonthAvg7DayDeathsIncreasePct,
             DoublingTimeDays,
+            TwoWeekConfirmedIncrease * cast(100000 as real) / c.Population as TwoWeekCasesPer100k,
             OutbreakFlag
         FROM fact_counties_ranked t
         JOIN dim_county c
