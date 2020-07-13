@@ -232,12 +232,12 @@ $(document).ready(function() {
 					<td></td>
 				</tr>
 				<tr>
-					<td>Cases per 100k:</td>
+					<td>Cases per 100k in Last 2 Weeks:</td>
 					<td>${record.CasesPer100k.toFixed(2)}</td>
 					<td></td>
 				</tr>
 				<tr>
-					<td>Cases per 100k, Change over Last Week:</td>
+					<td>Cases per 100kin Last 2 Weeks, Change over Last Week:</td>
 					<td>${record.OneWeekCasesPer100kChange > 0 ? '+' : ''}${record.OneWeekCasesPer100kChange.toFixed(2)}</td>
 					<td>${record.OneWeekCasesPer100kChangePct > 0 ? '+' : ''}${(record.OneWeekCasesPer100kChangePct * 100).toFixed(2)}%</td>
 				</tr>
