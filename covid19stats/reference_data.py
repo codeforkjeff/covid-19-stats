@@ -11,7 +11,7 @@ from .common import get_db_conn, timer, touch_file
 @timer
 def load_county_population(conn):
 
-    path = "stage/co-est2019-alldata.csv"
+    path = "reference/co-est2019-alldata.csv"
 
     if not os.path.exists(path):
         print("Downloading county info into stage dir")
@@ -122,8 +122,8 @@ def load_county_gazetteer(conn):
 
     # https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html
 
-    zip_path = "stage/2019_Gaz_counties_national.zip"
-    path = "stage/2019_Gaz_counties_national.txt"
+    zip_path = "reference/2019_Gaz_counties_national.zip"
+    path = "reference/2019_Gaz_counties_national.txt"
 
     if not os.path.exists(path):
         print("Downloading Gazetter county file into stage dir")
@@ -133,7 +133,7 @@ def load_county_gazetteer(conn):
                 output.write(data)
 
         with zipfile.ZipFile(zip_path) as zipf:
-            zipf.extractall("stage/")
+            zipf.extractall("reference/")
 
 
     with codecs.open(path, encoding='utf8') as f:
@@ -164,7 +164,7 @@ def load_county_acs_vars(conn):
 
     # https://api.census.gov/data/2018/acs/acs5/cprofile/variables.html
 
-    path = "stage/county_acs_2018.csv"
+    path = "reference/county_acs_2018.csv"
 
     if not os.path.exists(path):
         print("Downloading county ACS file into stage dir")
@@ -216,7 +216,7 @@ def load_county_acs_vars(conn):
 
 def load_state_info(conn):
 
-    path = "stage/nst-est2019-alldata.csv"
+    path = "reference/nst-est2019-alldata.csv"
 
     if not os.path.exists(path):
         print("Downloading state info into stage dir")
