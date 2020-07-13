@@ -13,8 +13,8 @@ for easier reporting
 
 Set up an environment using `requirements.txt`
 
-Clone the repo below in the same directory where you cloned this repo, to get
-the data files.
+Clone the following repo in the same directory where you cloned this repo, to get
+the data files:
 https://github.com/CSSEGISandData/COVID-19
 
 Run `make`
