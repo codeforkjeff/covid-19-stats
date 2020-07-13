@@ -1,22 +1,26 @@
 
 # COVID-19-stats
 
-This is me just playing around with data. You shouldn't use this for anything except satisfying your personal curiosity.
+This is me just playing around with data. You shouldn't use this for anything
+except satisfying your personal curiosity.
 
 What all this does:
-- cleans and transforms COVID-19 data from JHU into dimensional models for easier reporting
+- cleans and transforms COVID-19 data from JHU into dimensional models
+for easier reporting
 - provides web interfaces for viewing the data in various ways
 
 # How to Run This
 
 Set up an environment using `requirements.txt`
 
-Clone the repo below in the same directory where you cloned this repo, to get the data files.
+Clone the repo below in the same directory where you cloned this repo, to get
+the data files.
 https://github.com/CSSEGISandData/COVID-19
 
 Run `make`
 
-You should end up with a SQLite database, `stage/covid19.db`, and files in the `data/` directory.
+You should end up with a SQLite database, `stage/covid19.db`, and files in
+the `data/` directory.
 
 # Charts and Tables
 
