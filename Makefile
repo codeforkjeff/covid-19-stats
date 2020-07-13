@@ -18,7 +18,8 @@ stage/csse.loaded: \
 	python3 -m covid19stats.csse
 
 stage/reference_data.loaded: \
-	$(modules) covid19stats/reference_data.py
+	$(modules) covid19stats/reference_data.py \
+	reference/*
 	python3 -m covid19stats.reference_data
 
 clean:
