@@ -46,7 +46,30 @@
 			padding-left: 1em;
 			text-align: right;
 		}
-
+		.info {
+			padding: 6px 8px;
+			font: 14px/16px Arial, Helvetica,
+			sans-serif; background: white;
+			background: rgba(255,255,255,0.8);
+			box-shadow: 0 0 15px rgba(0,0,0,0.2);
+			border-radius: 5px;
+		}
+		.info h4 {
+			margin: 0 0 5px;
+			color: #777;
+		}
+		.legend {
+			text-align: left;
+			line-height: 18px;
+			color: #555;
+		}
+		.legend i {
+			width: 18px;
+			height: 18px;
+			float: left;
+			margin-right: 8px;
+			opacity: 0.7;
+		}
 	</style>
 </head>
 <body>
@@ -91,13 +114,13 @@ $(document).ready(function() {
 
 	// https://mdigi.tools/color-shades/#810559
 	var color_shades = [
-		"#fcb5e5",
-		"#fa84d4",
-		"#f853c3",
-		"#f622b2",
-		"#dd0998",
-		"#ac0777",
-		"#7b0555"
+		["#fcb5e5", 100]
+		,["#fa84d4", 300]
+		,["#f853c3", 500]
+		,["#f622b2", 700]
+		,["#dd0998", 900]
+		,["#ac0777", 1100]
+		,["#7b0555",  10000000]
 	];
 
 	function draw_counties() {
@@ -115,22 +138,13 @@ $(document).ready(function() {
 				if(record) {
 					var color = "#fff0";
 					if(record.CasesPer100k >= 25) { 
-						if(record.CasesPer100k <= 100) {
-							idx = 0;
-						} else if(record.CasesPer100k <= 300) {
-							idx = 1;
-						} else if(record.CasesPer100k <= 500) {
-							idx = 2;
-						} else if(record.CasesPer100k <= 700) {
-							idx = 3;
-						} else if(record.CasesPer100k <= 900) {
-							idx = 4;
-						} else if(record.CasesPer100k <= 1100) {
-							idx = 5;
-						} else {
-							idx = 6;
+						for(var i=0; i < color_shades.length; i++) {
+							var shade = color_shades[i];
+							if(record.CasesPer100k <= shade[1]) {
+								color = shade[0];
+								break;
+							}
 						}
-						color = color_shades[idx];
 					}
 					return {
 						fillColor: color,
@@ -268,6 +282,29 @@ $(document).ready(function() {
 			tileSize: 512,
 			zoomOffset: -1
 		}).addTo(mymap);
+
+		var legend = L.control({position: 'bottomright'});
+
+		legend.onAdd = function (map) {
+
+		    var div = L.DomUtil.create('div', 'info legend');
+
+		    div.innerHTML += "<div>Cases Per 100k Over 2 Wks</div>"
+
+		    for (var i = 0; i < color_shades.length; i++) {
+		    	var shade = color_shades[i];
+		    	var lower = i > 0 ? color_shades[i-1][1] : 25;
+		    	var upper = 
+		    		i == color_shades.length-1 ? "+" : ' &ndash; ' + shade[1];
+		        div.innerHTML +=
+		            '<i style="background:' + shade[0] + '"></i> ' +
+		            lower + upper + '<br>';
+		    }
+
+		    return div;
+		};
+
+		legend.addTo(mymap);
 
     	draw_counties();
 	});
