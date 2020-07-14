@@ -4,7 +4,10 @@
 
 modules = covid19stats/common.py
 
+.PHONY: depend
+
 all: \
+	depend \
 	$(modules) covid19stats/exports.py \
 	stage/csse.loaded stage/covidtracking.loaded stage/reference_data.loaded stage/dimensional_models.loaded
 
