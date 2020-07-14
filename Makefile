@@ -1,12 +1,8 @@
-# less than ideal makefile
 
 modules = covid19stats/common.py
 
-.PHONY: update_csse_repo
-
 all: \
 	$(modules) covid19stats/exports.py \
-	update_csse_repo update_covidtracking \
 	stage/csse.loaded stage/covidtracking.loaded stage/reference_data.loaded stage/dimensional_models.loaded
 
 	python3 -m covid19stats.exports
@@ -33,15 +29,16 @@ stage/covidtracking.loaded:
 
 	python3 -m covid19stats.covidtracking
 
-update_covidtracking:
-
-	python3 -m covid19stats.covidtracking_download
-
-update_csse_repo:
+# in the context of this build, 'depend' is for downloading/updating input data
+depend:
 
 	@if ! [ -d ~/COVID-19 ]; then echo "COVID-19 directory doesn't exist! clone that repo first"; exit 1; fi
 
 	cd ~/COVID-19 && git pull
+
+	python3 -m covid19stats.covidtracking_download
+
+	# TODO: create a reference_data_download module
 
 clean:
 	rm -rf stage/*.loaded
