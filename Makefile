@@ -1,3 +1,6 @@
+# 
+# use empty .loaded files to track the last time portions of the database were updated
+# since make can't peek inside the database for dependencies.
 
 modules = covid19stats/common.py
 
