@@ -247,6 +247,7 @@ $(document).ready(function() {
 
 	    }),
 
+		// https://eric.clst.org/tech/usgeojson/
 		$.get("data/gz_2010_us_050_00_500k.json?" + new Date().getTime()).done(function(data) {	
 			counties_geojson = data;
 		})
