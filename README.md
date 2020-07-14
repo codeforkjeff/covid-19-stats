@@ -24,7 +24,11 @@ the `data/` directory.
 
 # Charts and Tables
 
-A map of outbreaks:
+A simple choropleth map of outbreaks:
+
+https://codeforkjeff.github.io/covid-19-stats/outbreaks_simple.html
+
+A complicated busy-looking map of outbreaks using circles:
 
 https://codeforkjeff.github.io/covid-19-stats/outbreaks.html
 
