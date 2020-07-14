@@ -110,7 +110,7 @@ $(document).ready(function() {
 			style: function(feature) {
 				var fips = feature.properties.STATE + feature.properties.COUNTY;
 
-				var record = county_data.filter(record => record.FIPS == fips)[0];
+				var record = county_data[fips];
 
 				if(record) {
 					var color = "#fff0";
@@ -151,7 +151,7 @@ $(document).ready(function() {
 			onEachFeature: function(feature, county) {
 				var fips = feature.properties.STATE + feature.properties.COUNTY;
 
-				var record = county_data.filter(record => record.FIPS == fips)[0];
+				var record = county_data[fips];
 
 				if(record) {
 					county.bindPopup(
@@ -243,8 +243,10 @@ $(document).ready(function() {
 
 			$("#county-count").html(data.filter(r => r.OutbreakFlag).length);
 
-	    	county_data = data;
-
+	    	county_data = data.reduce((acc, record) => {
+	    		acc[record.FIPS] = record;
+	    		return acc;
+	    	}, {});
 	    }),
 
 		// https://eric.clst.org/tech/usgeojson/
