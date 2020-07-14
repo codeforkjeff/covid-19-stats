@@ -93,3 +93,5 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
         else:
             os.remove(path_latest)
 
+    return replace
+

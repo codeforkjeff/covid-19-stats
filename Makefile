@@ -38,7 +38,7 @@ depend:
 
 	python3 -m covid19stats.covidtracking_download
 
-	# TODO: create a reference_data_download module
+	python3 -m covid19stats.reference_data_download
 
 clean:
 	rm -rf stage/*.loaded
