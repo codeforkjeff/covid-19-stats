@@ -17,7 +17,14 @@ Clone the following repo in the same directory where you cloned this repo, to ge
 the data files:
 https://github.com/CSSEGISandData/COVID-19
 
-Run `make`
+Run:
+
+```
+# download/update data; re-run this daily to pick up new files from CSSE
+make depend
+# build database and output files
+make
+```
 
 You should end up with a SQLite database, `stage/covid19.db`, and files in
 the `data/` directory.
