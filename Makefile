@@ -2,25 +2,46 @@
 
 modules = covid19stats/common.py
 
+.PHONY: update_csse_repo
+
 all: \
 	$(modules) covid19stats/exports.py \
-	stage/csse.loaded stage/reference_data.loaded stage/dimensional_models.loaded
+	update_csse_repo update_covidtracking \
+	stage/csse.loaded stage/covidtracking.loaded stage/reference_data.loaded stage/dimensional_models.loaded
+
 	python3 -m covid19stats.exports
 
 stage/dimensional_models.loaded: \
 	$(modules) covid19stats/dimensional_tables.py \
 	stage/csse.loaded stage/reference_data.loaded
+
 	python3 -m covid19stats.dimensional_tables
 
 stage/csse.loaded: \
 	$(modules) covid19stats/csse.py \
 	../COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv
+
 	python3 -m covid19stats.csse
 
 stage/reference_data.loaded: \
 	$(modules) covid19stats/reference_data.py \
 	reference/*
+
 	python3 -m covid19stats.reference_data
+
+stage/covidtracking.loaded:
+
+	python3 -m covid19stats.covidtracking
+
+update_covidtracking:
+
+	python3 -m covid19stats.covidtracking_download
+
+update_csse_repo:
+
+	@if ! [ -d ~/COVID-19 ]; then echo "COVID-19 directory doesn't exist! clone that repo first"; exit 1; fi
+
+	cd ~/COVID-19 && git pull
 
 clean:
 	rm -rf stage/*.loaded
