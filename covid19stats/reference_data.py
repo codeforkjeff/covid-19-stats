@@ -2,8 +2,6 @@
 import codecs
 import csv
 import os.path
-import urllib.request
-import zipfile
 
 from .common import get_db_conn, timer, touch_file
 
@@ -12,13 +10,6 @@ from .common import get_db_conn, timer, touch_file
 def load_county_population(conn):
 
     path = "reference/co-est2019-alldata.csv"
-
-    if not os.path.exists(path):
-        print("Downloading county info into stage dir")
-        with urllib.request.urlopen('https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/counties/totals/co-est2019-alldata.csv') as f:
-            data = f.read()
-            with open(path, 'wb') as output:
-                output.write(data)
 
     print("Loading county data into database")
 
@@ -122,19 +113,7 @@ def load_county_gazetteer(conn):
 
     # https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html
 
-    zip_path = "reference/2019_Gaz_counties_national.zip"
     path = "reference/2019_Gaz_counties_national.txt"
-
-    if not os.path.exists(path):
-        print("Downloading Gazetter county file into stage dir")
-        with urllib.request.urlopen("https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2019_Gazetteer/2019_Gaz_counties_national.zip") as f:
-            data = f.read()
-            with open(zip_path, 'wb') as output:
-                output.write(data)
-
-        with zipfile.ZipFile(zip_path) as zipf:
-            zipf.extractall("reference/")
-
 
     with codecs.open(path, encoding='utf8') as f:
         reader = csv.reader(f, delimiter="\t")
@@ -165,13 +144,6 @@ def load_county_acs_vars(conn):
     # https://api.census.gov/data/2018/acs/acs5/cprofile/variables.html
 
     path = "reference/county_acs_2018.csv"
-
-    if not os.path.exists(path):
-        print("Downloading county ACS file into stage dir")
-        with urllib.request.urlopen("https://api.census.gov/data/2018/acs/acs5/cprofile?get=GEO_ID,CP03_2014_2018_062E,CP05_2014_2018_018E&for=county:*") as f:
-            data = f.read()
-            with open(path, 'wb') as output:
-                output.write(data)
 
     print("Loading county vars into database")
 
@@ -217,13 +189,6 @@ def load_county_acs_vars(conn):
 def load_state_info(conn):
 
     path = "reference/nst-est2019-alldata.csv"
-
-    if not os.path.exists(path):
-        print("Downloading state info into stage dir")
-        with urllib.request.urlopen('http://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-alldata.csv') as f:
-            data = f.read()
-            with open(path, 'wb') as output:
-                output.write(data)
 
     print("Loading state data into database")
 
