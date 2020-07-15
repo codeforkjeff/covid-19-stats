@@ -20,6 +20,9 @@ https://github.com/CSSEGISandData/COVID-19
 Run:
 
 ```
+# download/update data; re-run this daily to pick up new files from CSSE
+make depend
+# build database and output files
 make
 ```
 
