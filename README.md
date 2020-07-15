@@ -30,23 +30,23 @@ the `data/` directory.
 
 A simple choropleth map of outbreaks:
 
-https://codeforkjeff.github.io/covid-19-stats/outbreaks_simple.html
+<https://codeforkjeff.github.io/covid-19-stats/outbreaks_simple.html>
 
 A complicated busy-looking map of outbreaks using circles:
 
-https://codeforkjeff.github.io/covid-19-stats/outbreaks.html
+<https://codeforkjeff.github.io/covid-19-stats/outbreaks.html>
 
 Progress by county and by state:
 
-https://codeforkjeff.github.io/covid-19-stats/counties_progress.html
+<https://codeforkjeff.github.io/covid-19-stats/counties_progress.html>
 
-https://codeforkjeff.github.io/covid-19-stats/states_progress.html
+<https://codeforkjeff.github.io/covid-19-stats/states_progress.html>
 
 Charts for COVID-19 statistics for the United States, adjusted for population
 size, by county and by state. This was my earliest effort; I'm no longer
 maintaining it or updating the data for it, though it still works.
 
-https://codeforkjeff.github.io/covid-19-stats/covid-19-stats.html
+<https://codeforkjeff.github.io/covid-19-stats/covid-19-stats.html>
 
 # Working with the data
 
