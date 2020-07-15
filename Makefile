@@ -31,7 +31,7 @@ stage/reference_data.loaded: \
 
 	python3 -m covid19stats.reference_data
 
-stage/covidtracking.loaded:
+stage/covidtracking.loaded: input/covidtracking_states.csv
 
 	python3 -m covid19stats.covidtracking
 
