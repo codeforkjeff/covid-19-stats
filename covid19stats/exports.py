@@ -178,6 +178,45 @@ def export_counties_7day_avg():
 
 
 @timer
+def export_counties_casesper100k():
+
+    conn = get_db_conn()
+
+    print("exporting counties_casesper100k")
+
+    c = conn.cursor()
+
+    #### for sparklines
+
+    c.execute('''
+        SELECT
+            FIPS, Date, CasesPer100k
+        FROM fact_counties_progress
+        WHERE
+            Date >= date((SELECT MAX(date) FROM fact_counties_progress), '-30 days')
+        ORDER BY FIPS, date;
+    ''')
+
+    rows = c.fetchall()
+
+    buf = io.StringIO()
+    for column in rows[0].keys():
+        buf.write(column)
+        buf.write("\t")
+    buf.write("\n")
+    for row in rows[1:]:
+        for value in row:
+            buf.write(str(value))
+            buf.write("\t")
+        buf.write("\n")
+
+    with codecs.open("data/counties_casesper100k.txt", "w", encoding='utf8') as f:
+        f.write(buf.getvalue())
+
+    conn.close()
+
+
+@timer
 def export_state_info():
     conn = get_db_conn()
 
@@ -202,6 +241,7 @@ def create_exports():
         multiprocessing.Process(target=export_state_info)
         ,multiprocessing.Process(target=export_counties_rate_of_change)
         ,multiprocessing.Process(target=export_counties_7day_avg)
+        ,multiprocessing.Process(target=export_counties_casesper100k)
     ]
 
     for p in processes:

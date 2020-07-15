@@ -14,6 +14,8 @@
 
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
+
 	<style>
 		#controls {
 			margin-bottom: 10px;
@@ -70,6 +72,24 @@
 			margin-right: 8px;
 			opacity: 0.7;
 		}
+
+      .smalltext
+      {
+        font-size: 11px;
+      }
+      .centered
+      {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+      }
+      .left {
+        float: left;
+      }
+      .right {
+        float: right;
+      }
+
 	</style>
 </head>
 <body>
@@ -98,6 +118,56 @@ $(document).ready(function() {
 
 	var circles = [];
 	var county_data;
+	var sparkline_data = {};
+	var last_sparkline_chart;
+
+	function createSparkline(ctx, data) {
+	  return new Chart(ctx, {
+	    type: 'line',
+	    data: {
+	      labels: new Array(data.length),
+	      datasets: [
+	        {
+	          data: data
+	        }
+	      ]
+	    },
+	    options: {
+	      responsive: false,
+	      legend: {
+	        display: false
+	      },
+	      elements: {
+	        line: {
+	          borderColor: '#000000',
+	          borderWidth: 1
+	        },
+	        point: {
+	          radius: 0
+	        }
+	      },
+	      tooltips: {
+	        enabled: true
+	      },
+	      scales: {
+	        yAxes: [
+	          {
+	            display: false,
+	            ticks: {
+	              // relative to 0, otherwise it's confusing
+	              min: 0
+	            }
+	          }
+	        ],
+	        xAxes: [
+	          {
+	            display: false
+	          },
+	        ]
+	      }
+	    }
+	  });
+	}
 
 	function create_comparator(attr) {
         return function(a,b) {
@@ -192,48 +262,34 @@ $(document).ready(function() {
 							<td></td>
 						</tr>
 						<tr>
-							<td>Cases per 100k in Last 2 Weeks, Change over Last Week:</td>
-							<td>${record.OneWeekCasesPer100kChange > 0 ? '+' : ''}${record.OneWeekCasesPer100kChange.toFixed(2)}</td>
-							<td>${record.OneWeekCasesPer100kChangePct > 0 ? '+' : ''}${(record.OneWeekCasesPer100kChangePct * 100).toFixed(2)}%</td>
+							<td colspan="3">Change over Last 30 Days:</td>
 						</tr>
 						<tr>
-							<td>Current 7 Day Avg of New Cases:</td>
-							<td>${record.Avg7DayConfirmedIncrease.toFixed(2)}</td>
-							<td></td>
-						</tr>
-						<tr>
-							<td>Change in 7 Day Avg over Last 2 Weeks:</td>
-							<td>${record.TwoWeekAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.TwoWeekAvg7DayConfirmedIncrease.toFixed(2)}</td>
-							<td>${record.TwoWeekAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.TwoWeekAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
-						</tr>
-						<tr>
-							<td>Change in 7 Day Avg over Last Month:</td>
-							<td>${record.MonthAvg7DayConfirmedIncrease > 0 ? '+' : ''}${record.MonthAvg7DayConfirmedIncrease.toFixed(2)}</td>
-							<td>${record.MonthAvg7DayConfirmedIncreasePct > 0 ? '+' : ''}${(record.MonthAvg7DayConfirmedIncreasePct * 100).toFixed(2)}%</td>
-						</tr>
-						<tr>
-							<td>New Cases in Last Day:</td>
-							<td>${record.ConfirmedIncrease.toFixed(2)}</td>
-							<td>+${(record.ConfirmedIncreasePct * 100).toFixed(2)}%</td>
-						</tr>
-						<tr>
-							<td>New Cases in Last Week:</td>
-							<td>${record.OneWeekConfirmedIncrease.toFixed(2)}</td>
-							<td>+${(record.OneWeekConfirmedIncreasePct * 100).toFixed(2)}%</td>
-						</tr>
-						<tr>
-							<td>New Cases in Last 2 Weeks:</td>
-							<td>${record.TwoWeekConfirmedIncrease.toFixed(2)}</td>
-							<td>+${(record.TwoWeekConfirmedIncreasePct * 100).toFixed(2)}%</td>
-						</tr>
-						<tr>
-							<td>New Cases in Last Month:</td>
-							<td>${record.MonthConfirmedIncrease.toFixed(2)}</td>
-							<td>+${(record.MonthConfirmedIncreasePct * 100).toFixed(2)}%</td>
+							<td colspan="3">
+		                  <canvas class='centered sparkline' data-fips='${record.FIPS}' id='sparkline-${record.FIPS}' width='250' height='100'></canvas><div class='centered smalltext' style='width: 250px;'><span class='left' id='sparkline-start-${record.FIPS}'></span><span class='right' id='sparkline-end-${record.FIPS}'></span></div>
+							</td>
 						</tr>
 						</table>
 						`, {
 						  maxWidth: "auto"
+						})
+						.on('popupopen', function (popup) {
+							// this has to be redrawn on each popup event because leaflet seems
+							// to re-insert the html 
+
+							if(last_sparkline_chart) {
+								last_sparkline_chart.destroy();
+							}
+
+							var elem = document.getElementById("sparkline-" + record.FIPS);
+
+							var ctx = elem.getContext('2d');
+							last_sparkline_chart = createSparkline(ctx, sparkline_data[record.FIPS]);
+
+							var last = sparkline_data[record.FIPS].length - 1;
+
+							$("#sparkline-start-" + record.FIPS).html(sparkline_data[record.FIPS][0].toFixed(2));
+							$("#sparkline-end-" + record.FIPS).html(sparkline_data[record.FIPS][last].toFixed(2));
 						});
 				} else { 
 					county.bindPopup('No info for this county (FIPS code ' + fips + ')');
@@ -262,6 +318,24 @@ $(document).ready(function() {
 	    		return acc;
 	    	}, {});
 	    }),
+
+		$.get("data/counties_casesper100k.txt?" + new Date().getTime(), function(data) {
+
+		  var lines = data.split("\n");
+		  lines.forEach(line => {
+		    var pieces = line.split("\t")
+		    var row = {
+		      FIPS: pieces[0],
+		      Date: pieces[1],
+		      CasesPer100k: parseFloat(pieces[2])
+		    };
+
+		    if(!sparkline_data[row.FIPS]) {
+		      sparkline_data[row.FIPS] = [];
+		    }
+		    sparkline_data[row.FIPS].push(row.CasesPer100k);
+		  })
+		}),
 
 		// https://eric.clst.org/tech/usgeojson/
 		$.get("data/gz_2010_us_050_00_500k.json?" + new Date().getTime()).done(function(data) {	
