@@ -778,6 +778,55 @@ def create_fact_counties_progress(conn):
     conn.commit()
 
 
+def create_fact_nation(conn):
+
+    print("create_fact_nation")
+
+    c = conn.cursor()
+
+    c.executescript('''
+        DROP TABLE IF EXISTS fact_nation;
+
+        CREATE TABLE fact_nation AS
+            select
+                date(substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2)) AS Date,
+                sum(positive) as positive,
+                sum(positiveIncrease) as positiveIncrease,
+                CAST(NULL AS REAL) AS CasesPer100k
+            from raw_covidtracking_states s
+            group by date
+        ;
+
+        WITH
+        us_pop as (
+            select sum(Population) as Population
+            from dim_state
+            where 
+                StateAbbrev in (select state from raw_covidtracking_states)
+        )
+        ,two_week_increase as (
+            select
+                n.date,
+                n.positive - two_weeks_ago.positive as TwoWeekIncrease
+            from fact_nation n
+            left join fact_nation two_weeks_ago
+                ON two_weeks_ago.Date = date(n.Date, '-14 days')
+        )
+        UPDATE fact_nation
+        SET CasesPer100k = 
+            (
+            select
+                cast(TwoWeekIncrease AS REAL) * 100000 / Population AS CasesPer100k
+            from two_week_increase
+            cross join us_pop
+            where two_week_increase.Date = fact_nation.Date
+            )
+        ;
+    ''')
+
+    conn.commit()
+
+
 @timer
 def create_dimensional_tables():
 
@@ -793,6 +842,8 @@ def create_dimensional_tables():
     create_fact_counties_ranked(conn)
 
     create_fact_counties_progress(conn)
+
+    create_fact_nation(conn)
 
     touch_file('stage/dimensional_models.loaded')
 
