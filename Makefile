@@ -6,13 +6,13 @@ modules = covid19stats/common.py
 
 all: \
 	$(modules) covid19stats/exports.py \
-	stage/csse.loaded stage/covidtracking.loaded stage/reference_data.loaded stage/dimensional_models.loaded
+	stage/csse.loaded stage/reference_data.loaded stage/dimensional_models.loaded
 
 	python3 -m covid19stats.exports
 
 stage/dimensional_models.loaded: \
 	$(modules) covid19stats/dimensional_tables.py \
-	stage/csse.loaded stage/reference_data.loaded
+	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded 
 
 	python3 -m covid19stats.dimensional_tables
 
