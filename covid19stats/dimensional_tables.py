@@ -713,7 +713,7 @@ def create_fact_counties_progress(conn):
             MonthAvg7DayDeathsIncrease,
             MonthAvg7DayDeathsIncreasePct,
             DoublingTimeDays,
-            max(coalesce(TwoWeekConfirmedIncrease, 0) * cast(100000 as real) / c.Population, 0) as CasesPer100k,
+            max(coalesce(coalesce(TwoWeekConfirmedIncrease, 0) * cast(100000 as real) / c.Population, 0), 0) as CasesPer100k,
             NULL AS OneWeekCasesPer100kChange,
             NULL AS OneWeekCasesPer100kChangePct
         FROM fact_counties_base t
