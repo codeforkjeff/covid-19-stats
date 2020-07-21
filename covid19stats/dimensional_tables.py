@@ -778,6 +778,61 @@ def create_fact_counties_progress(conn):
     conn.commit()
 
 
+def create_fact_states(conn):
+
+    print("create_fact_states")
+
+    c = conn.cursor()
+
+    c.executescript('''
+        DROP TABLE IF EXISTS fact_states;
+
+        CREATE TABLE fact_states AS
+            select
+                date(substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2)) AS Date,
+                state,
+                CAST(positive AS INT) AS positive,
+                CAST(positiveIncrease AS INT) AS positiveIncrease,
+                CAST(death AS INT) AS death,
+                CAST(deathIncrease AS INT) AS deathIncrease,
+                CAST(hospitalized AS INT) AS hospitalized,
+                CAST(hospitalizedIncrease AS INT) AS hospitalizedIncrease,
+                CAST(NULL AS REAL) AS CasesPer100k
+            from raw_covidtracking_states s
+        ;
+
+        CREATE UNIQUE INDEX idx_fact_states ON fact_states (state, Date);
+
+        WITH two_week_increase as (
+            select
+                s.date,
+                s.State,
+                cast((s.positive - two_weeks_ago.positive) AS REAL) * 100000 / Population AS CasesPer100k
+            from fact_states s
+            join dim_date s_date
+                ON s.date = s_date.date
+            join dim_state ds
+                ON s.state = ds.StateAbbrev
+            left join fact_states two_weeks_ago
+                ON two_weeks_ago.State = s.State
+                AND two_weeks_ago.Date = s_date.Minus14Days
+        )
+        UPDATE fact_states
+        SET CasesPer100k =
+            (
+            select
+                CasesPer100k
+            from two_week_increase
+            where
+                two_week_increase.state = fact_states.state
+                AND two_week_increase.Date = fact_states.Date
+            )
+        ;
+    ''')
+
+    conn.commit()
+
+
 def create_fact_nation(conn):
 
     print("create_fact_nation")
@@ -789,11 +844,11 @@ def create_fact_nation(conn):
 
         CREATE TABLE fact_nation AS
             select
-                date(substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2)) AS Date,
+                date,
                 sum(positive) as positive,
                 sum(positiveIncrease) as positiveIncrease,
                 CAST(NULL AS REAL) AS CasesPer100k
-            from raw_covidtracking_states s
+            from fact_states
             group by date
         ;
 
@@ -802,7 +857,7 @@ def create_fact_nation(conn):
             select sum(Population) as Population
             from dim_state
             where 
-                StateAbbrev in (select state from raw_covidtracking_states)
+                StateAbbrev in (select state from fact_states)
         )
         ,two_week_increase as (
             select
@@ -842,6 +897,8 @@ def create_dimensional_tables():
     create_fact_counties_ranked(conn)
 
     create_fact_counties_progress(conn)
+
+    create_fact_states(conn)
 
     create_fact_nation(conn)
 
