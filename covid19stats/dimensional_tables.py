@@ -797,6 +797,8 @@ def create_fact_states(conn):
                 CAST(deathIncrease AS INT) AS deathIncrease,
                 CAST(hospitalized AS INT) AS hospitalized,
                 CAST(hospitalizedIncrease AS INT) AS hospitalizedIncrease,
+                CAST(totalTestResultsIncrease AS INT) AS totalTestResultsIncrease,
+                CAST(positiveIncrease AS REAL) / CAST(totalTestResultsIncrease AS REAL) AS PositivityRate,
                 CAST(NULL AS REAL) AS CasesPer100k
             from raw_covidtracking_states s
         ;
