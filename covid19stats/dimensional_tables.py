@@ -849,6 +849,9 @@ def create_fact_nation(conn):
                 date,
                 sum(positive) as positive,
                 sum(positiveIncrease) as positiveIncrease,
+                sum(totalTestResultsIncrease) as totalTestResultsIncrease,
+                CAST(NULL AS REAL) as Avg7DayPositiveIncrease,
+                CAST(NULl AS REAL) as Avg7DayTotalTestResultsIncrease,
                 CAST(NULL AS REAL) AS CasesPer100k
             from fact_states
             group by date
@@ -878,6 +881,35 @@ def create_fact_nation(conn):
             cross join us_pop
             where two_week_increase.Date = fact_nation.Date
             )
+        ;
+
+        WITH one_week AS (
+            select
+                n.date,
+                SUM(one_week_period.positiveIncrease) / 7.0 AS Avg7DayPositiveIncrease,
+                SUM(one_week_period.totalTestResultsIncrease) / 7.0 AS Avg7DayTotalTestResultsIncrease
+            from fact_nation n
+            left join fact_nation one_week_period
+                ON one_week_period.Date > date(n.Date, '-7 days')
+                AND one_week_period.Date <= n.date
+            GROUP BY n.date
+        )
+        UPDATE fact_nation
+        SET Avg7DayPositiveIncrease =
+            (
+            select
+                Avg7DayPositiveIncrease
+            from one_week
+            where one_week.Date = fact_nation.Date
+            )
+            ,Avg7DayTotalTestResultsIncrease = 
+            (
+            select
+                Avg7DayTotalTestResultsIncrease
+            from one_week
+            where one_week.Date = fact_nation.Date
+            )
+
         ;
     ''')
 
