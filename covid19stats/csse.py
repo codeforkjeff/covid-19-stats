@@ -2,6 +2,7 @@
 import codecs
 import csv
 import glob
+import io
 import multiprocessing
 import os
 import os.path
@@ -53,7 +54,7 @@ def get_rows_from_csse_file(path):
 
                 row = [path.date] + reordered
 
-                row = [None if val == '' else val for val in row]
+                #row = [None if val == '' else val for val in row]
 
                 result.append(row)
 
@@ -115,8 +116,18 @@ def load_csse():
             )
     ''')
 
+    conn.commit()
+
     #c.executemany('INSERT INTO final_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
-    psycopg2.extras.execute_batch(c, 'INSERT INTO final_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
+    #psycopg2.extras.execute_batch(c, 'INSERT INTO final_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
+
+    buf = io.StringIO()
+    for row in all_rows:
+        buf.write("\t".join(row + ['0']))
+        buf.write("\n")
+    buf.seek(0)
+
+    c.copy_from(buf, 'final_csse', sep="\t", null='',size=200000)
 
     conn.commit()
 
