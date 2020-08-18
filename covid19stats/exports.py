@@ -124,7 +124,7 @@ def export_counties_rate_of_change():
             ON c.State = s.State
         WHERE
             Date = (SELECT MAX(Date) FROM fact_counties_progress)
-        ORDER BY t.FIPS;
+        ORDER BY t.FIPS, Date;
     ''')
 
     rows = c.fetchall()
@@ -152,7 +152,7 @@ def export_counties_7day_avg():
         FROM fact_counties_base
         WHERE
             Date >= date((SELECT MAX(date) FROM fact_counties_base), '-30 days')
-        ORDER BY date;
+        ORDER BY date, FIPS;
     ''')
 
     rows = c.fetchall()
