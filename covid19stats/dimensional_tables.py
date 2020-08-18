@@ -181,6 +181,7 @@ def create_dim_county_and_fact_counties_base(conn):
         CREATE INDEX idx_stage_csse_filtered ON stage_csse_filtered (FIPS, Date);
     ''')
 
+    conn.commit()
 
     print("dim_county")
 
@@ -537,8 +538,11 @@ def create_fact_counties_progress(conn):
         ;
 
         CREATE UNIQUE INDEX idx_stage_counties_7dayavg_month_change_overall ON stage_counties_7dayavg_month_change_overall (FIPS, Date);
+    ''')
 
-        --
+    conn.commit()
+
+    c.execute('''
 
         DROP TABLE IF EXISTS stage_counties_7dayavg_twoweek_change_overall;
 
@@ -560,7 +564,11 @@ def create_fact_counties_progress(conn):
 
         CREATE UNIQUE INDEX idx_stage_counties_7dayavg_twoweek_change_overall ON stage_counties_7dayavg_twoweek_change_overall (FIPS, Date);
 
-        --
+    ''')
+
+    conn.commit()
+
+    c.execute('''
 
         DROP TABLE IF EXISTS stage_counties_one_week_change;
 
@@ -580,7 +588,11 @@ def create_fact_counties_progress(conn):
 
         CREATE UNIQUE INDEX idx_stage_counties_one_week_change ON stage_counties_one_week_change (FIPS, Date);
 
-        --
+    ''')
+
+    conn.commit()
+
+    c.execute('''
 
         DROP TABLE IF EXISTS stage_counties_two_week_change;
 
@@ -600,7 +612,11 @@ def create_fact_counties_progress(conn):
 
         CREATE UNIQUE INDEX idx_stage_counties_two_week_change ON stage_counties_two_week_change (FIPS, Date);
 
-        --
+    ''')
+
+    conn.commit()
+
+    c.execute('''
 
         DROP TABLE IF EXISTS stage_counties_month_change;
 
@@ -620,6 +636,8 @@ def create_fact_counties_progress(conn):
 
         CREATE UNIQUE INDEX idx_stage_counties_month_change ON stage_counties_month_change (FIPS, Date);
     ''')
+
+    conn.commit()
 
     c.execute('''
 
@@ -661,6 +679,8 @@ def create_fact_counties_progress(conn):
         --
 
     ''')
+
+    conn.commit()
 
     c.execute('''
 
@@ -742,6 +762,8 @@ def create_fact_counties_progress(conn):
         CREATE UNIQUE INDEX idx_fact_counties_progress ON fact_counties_progress (FIPS, Date);
     ''')
 
+    conn.commit()
+
     c.execute('''
 
         DROP TABLE IF EXISTS stage_counties_cases_per_100k_change;
@@ -762,6 +784,11 @@ def create_fact_counties_progress(conn):
 
         CREATE UNIQUE INDEX idx_stage_counties_cases_per_100k_change ON stage_counties_cases_per_100k_change (FIPS, Date);
 
+    ''')
+
+    conn.commit()
+
+    c.execute('''
         UPDATE fact_counties_progress
         SET
             OneWeekCasesPer100kChange = coalesce((
