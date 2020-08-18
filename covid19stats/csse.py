@@ -6,6 +6,7 @@ import io
 import multiprocessing
 import os
 import os.path
+import time
 
 import psycopg2.extras
 
@@ -121,6 +122,8 @@ def load_csse():
     #c.executemany('INSERT INTO final_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
     #psycopg2.extras.execute_batch(c, 'INSERT INTO final_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
 
+    start_time = time.perf_counter()
+
     buf = io.StringIO()
     for row in all_rows:
         buf.write("\t".join(row + ['0']))
@@ -128,6 +131,12 @@ def load_csse():
     buf.seek(0)
 
     c.copy_from(buf, 'final_csse', sep="\t", null='',size=200000)
+
+    end_time = time.perf_counter()
+    run_time = end_time - start_time
+    rate = len(all_rows) / run_time
+
+    print(f"copy_from took {run_time:.4f} secs ({rate:.4f} rows/s)")
 
     conn.commit()
 
