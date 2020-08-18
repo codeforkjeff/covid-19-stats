@@ -91,7 +91,7 @@ def create_dim_county_and_fact_counties_base(conn):
                 AND FIPS <> '00066' -- duplicate for Guam
                 AND LENGTH(FIPS) > 0
             group by FIPS
-            Having SUM(Confirmed > 0) or SUM(Deaths) > 0 or SUM(Recovered) > 0 or sum(active) > 0;
+            Having SUM(Confirmed) > 0 or SUM(Deaths) > 0 or SUM(Recovered) > 0 or sum(active) > 0;
 
         CREATE INDEX idx_stage_regions_with_data ON stage_regions_with_data (FIPS);
     ''')
