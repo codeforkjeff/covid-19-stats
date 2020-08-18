@@ -125,10 +125,10 @@ def load_csse():
         SET ShouldHaveFIPS = 1
         WHERE
             Country_Region = 'US'
-            AND Admin2 <> 'Unassigned'
-            AND Admin2 <> 'Unknown'
-            AND Admin2 not like 'Out of%'
-            AND Admin2 not like 'Out-of-%'
+            AND coalesce(Admin2, '') <> 'Unassigned'
+            AND coalesce(Admin2, '') <> 'Unknown'
+            AND coalesce(Admin2, '') not like 'Out of%'
+            AND coalesce(Admin2, '') not like 'Out-of-%'
             And Province_State <> 'Recovered'
     ''')
 
@@ -136,7 +136,7 @@ def load_csse():
     c.execute('''
         UPDATE final_csse
         SET
-            FIPS = substr('0000000000' || FIPS, -5, 5)
+            FIPS = right('0000000000' || FIPS, 5)
         WHERE
             ShouldHaveFIPS = 1
             AND length(fips) <> 5
