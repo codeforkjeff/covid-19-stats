@@ -64,7 +64,7 @@ def export_counties_ranked():
         buf.write(column)
         buf.write("\t")
     buf.write("\n")
-    for row in rows[1:]:
+    for row in rows:
         buf.write("\t".join([blank_if_none(value) for value in row]) + "\n")
 
     with codecs.open("data/counties_ranked.csv", "w", encoding='utf8') as f:
@@ -161,14 +161,13 @@ def export_counties_7day_avg():
     #     f.write(json.dumps([row_to_dict(row) for row in rows]))
 
     buf = io.StringIO()
-    for column in rows[0].keys():
-        buf.write(column)
-        buf.write("\t")
-    buf.write("\n")
-    for row in rows[1:]:
-        for value in row:
-            buf.write(str(value))
-            buf.write("\t")
+    # for column in rows[0].keys():
+    #     buf.write(column)
+    #     buf.write("\t")
+    # buf.write("\n")
+    buf.write("FIPS\tDate\tAvg7DayConfirmedIncrease\tAvg7DayDeathsIncrease\n")
+    for row in rows:
+        buf.write("\t".join([str(value) for value in row]))
         buf.write("\n")
 
     with codecs.open("data/counties_7day_avg.txt", "w", encoding='utf8') as f:
@@ -200,14 +199,13 @@ def export_counties_casesper100k():
     rows = c.fetchall()
 
     buf = io.StringIO()
-    for column in rows[0].keys():
-        buf.write(column)
-        buf.write("\t")
-    buf.write("\n")
-    for row in rows[1:]:
-        for value in row:
-            buf.write(str(value))
-            buf.write("\t")
+    # for column in rows[0].keys():
+    #     buf.write(column)
+    #     buf.write("\t")
+    # buf.write("\n")
+    buf.write("FIPS\tDate\tCasesPer100k\n")
+    for row in rows:
+        buf.write("\t".join([str(value) for value in row]))
         buf.write("\n")
 
     with codecs.open("data/counties_casesper100k.txt", "w", encoding='utf8') as f:
