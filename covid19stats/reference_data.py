@@ -34,7 +34,7 @@ def load_county_population(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
 
     conn.commit()
 
@@ -93,11 +93,10 @@ def load_county_population(conn):
     ''')
 
 
-    c.executescript('''
+    c.execute(('''
         DROP TABLE nyc_patch;
-
         CREATE INDEX idx_final_fips_population ON final_fips_population (FIPS);
-    ''')
+    '''))
 
     conn.commit()
 
@@ -134,7 +133,7 @@ def load_county_gazetteer(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
 
 
 @timer
@@ -167,9 +166,9 @@ def load_county_acs_vars(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
 
-    c.executescript('''
+    c.execute('''
         DROP TABLE IF EXISTS final_county_acs;
 
         CREATE TABLE final_county_acs AS
@@ -213,7 +212,7 @@ def load_state_info(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
 
     conn.commit()
 
@@ -292,13 +291,13 @@ def load_reference_data():
 
     conn = get_db_conn()
 
+    load_state_info(conn)
+
     load_county_population(conn)
 
     load_county_acs_vars(conn)
 
     load_county_gazetteer(conn)
-
-    load_state_info(conn)
 
     touch_file('stage/reference_data.loaded')
 
