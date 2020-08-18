@@ -292,13 +292,13 @@ def load_reference_data():
 
     conn = get_db_conn()
 
+    load_state_info(conn)
+
     load_county_population(conn)
 
     load_county_acs_vars(conn)
 
     load_county_gazetteer(conn)
-
-    load_state_info(conn)
 
     touch_file('stage/reference_data.loaded')
 
