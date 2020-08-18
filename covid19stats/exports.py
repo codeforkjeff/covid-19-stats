@@ -126,7 +126,7 @@ def export_counties_rate_of_change():
             ON c.State = s.State
         WHERE
             Date = (SELECT MAX(Date) FROM fact_counties_progress)
-        ORDER BY t.FIPS;
+        ORDER BY t.FIPS, Date;
     ''')
 
     rows = c.fetchall()
