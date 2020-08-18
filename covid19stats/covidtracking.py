@@ -35,7 +35,7 @@ def load_covidtracking_states():
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_covidtracking_states VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_covidtracking_states VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
 
     conn.commit()
 

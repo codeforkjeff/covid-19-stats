@@ -6,6 +6,8 @@ import multiprocessing
 import os
 import os.path
 
+import psycopg2.extras
+
 from .common import get_db_conn, timer, touch_file, Path
 
 
@@ -51,6 +53,8 @@ def get_rows_from_csse_file(path):
 
                 row = [path.date] + reordered
 
+                row = [None if val == '' else val for val in row]
+
                 result.append(row)
 
             first_row = False
@@ -81,11 +85,11 @@ def load_csse():
 
     c = conn.cursor()
 
-    #c.execute("PRAGMA synchronous=OFF")
-    c.execute("PRAGMA cache_size=10000000")
-    c.execute("PRAGMA journal_mode = OFF")
-    #c.execute("PRAGMA locking_mode = EXCLUSIVE")
-    c.execute("PRAGMA temp_store = MEMORY")
+    # #c.execute("PRAGMA synchronous=OFF")
+    # c.execute("PRAGMA cache_size=10000000")
+    # c.execute("PRAGMA journal_mode = OFF")
+    # #c.execute("PRAGMA locking_mode = EXCLUSIVE")
+    # c.execute("PRAGMA temp_store = MEMORY")
 
     c.execute('''
         DROP TABLE IF EXISTS final_csse;
@@ -111,7 +115,8 @@ def load_csse():
             )
     ''')
 
-    c.executemany('INSERT INTO final_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
+    #c.executemany('INSERT INTO final_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
+    psycopg2.extras.execute_batch(c, 'INSERT INTO final_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
 
     conn.commit()
 

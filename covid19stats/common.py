@@ -11,6 +11,7 @@ import sqlite3
 import time
 import urllib.request
 
+import psycopg2
 
 Path = namedtuple('Path', ['path', 'date'])
 
@@ -36,8 +37,9 @@ def row_to_dict(row):
 
 
 def get_db_conn():
-    conn = sqlite3.connect('stage/covid19.db')
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(database="covid19")
+    #conn = sqlite3.connect('stage/covid19.db')
+    #conn.row_factory = sqlite3.Row
     return conn
 
 
