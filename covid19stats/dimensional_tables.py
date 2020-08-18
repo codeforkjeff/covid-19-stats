@@ -201,8 +201,6 @@ def create_dim_county_and_fact_counties_base(conn):
             primary key (FIPS)
         );
 
-        CREATE UNIQUE INDEX idx_dim_county ON dim_county (County, State);
-    
         WITH MostRecent AS (
             SELECT
                 *
@@ -235,7 +233,9 @@ def create_dim_county_and_fact_counties_base(conn):
             ON t1.FIPS = t2.FIPS
         LEFT JOIN final_county_acs t3
             ON t1.FIPS = t3.state_and_county
-        WHERE t1.DateRank = 1
+        WHERE t1.DateRank = 1;
+
+        CREATE UNIQUE INDEX idx_dim_county ON dim_county (County, State);
     ''')
 
     print("fact_counties_base")
