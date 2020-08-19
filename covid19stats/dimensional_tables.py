@@ -11,7 +11,7 @@ def create_dim_state(conn):
     c.execute('DROP TABLE IF EXISTS dim_state')
 
     c.execute('''
-        CREATE TABLE dim_state
+        CREATE UNLOGGED TABLE dim_state
         AS SELECT
             NAME AS State
             ,Abbreviation AS StateAbbrev
@@ -34,7 +34,7 @@ def create_dim_date(conn):
     c.execute('''
         DROP TABLE IF EXISTS dim_date;
 
-        CREATE TABLE dim_date (
+        CREATE UNLOGGED TABLE dim_date (
             Date date,
             Minus1Day date,
             Minus7Days date,
@@ -81,7 +81,7 @@ def create_dim_county_and_fact_counties_base(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_regions_with_data;
 
-        CREATE TABLE stage_regions_with_data AS
+        CREATE UNLOGGED TABLE stage_regions_with_data AS
             -- only take U.S. regions that have data
             select FIPS
             from final_csse
@@ -103,7 +103,7 @@ def create_dim_county_and_fact_counties_base(conn):
 
         DROP TABLE IF EXISTS stage_csse_filtered_pre;
 
-        CREATE TABLE stage_csse_filtered_pre AS
+        CREATE UNLOGGED TABLE stage_csse_filtered_pre AS
             SELECT
                 t1.*
             FROM final_csse t1
@@ -121,7 +121,7 @@ def create_dim_county_and_fact_counties_base(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_csse_filtered_deduped;
 
-        CREATE TABLE stage_csse_filtered_deduped AS
+        CREATE UNLOGGED TABLE stage_csse_filtered_deduped AS
             -- there's duplication for the same FIPS and Date;
             -- for some cases, it looks like counts got spread out across 2 rows;
             -- in other cases, it looks like there are rows where values are 0.
@@ -141,7 +141,7 @@ def create_dim_county_and_fact_counties_base(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_csse_filtered;
 
-        CREATE TABLE stage_csse_filtered (
+        CREATE UNLOGGED TABLE stage_csse_filtered (
             Date date,
             FIPS text,
             Admin2 text,
@@ -188,7 +188,7 @@ def create_dim_county_and_fact_counties_base(conn):
     c.execute('''
         DROP TABLE IF EXISTS dim_county;
 
-        CREATE TABLE dim_county (
+        CREATE UNLOGGED TABLE dim_county (
             FIPS text,
             County text,
             State text,
@@ -243,7 +243,7 @@ def create_dim_county_and_fact_counties_base(conn):
     c.execute('''
         DROP TABLE IF EXISTS fact_counties_base;
 
-        CREATE TABLE fact_counties_base (
+        CREATE UNLOGGED TABLE fact_counties_base (
             Date date,
             FIPS TEXT,
             Confirmed INT,
@@ -294,7 +294,7 @@ def create_dim_county_and_fact_counties_base(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_counties_7day_avg;
 
-        CREATE TABLE stage_counties_7day_avg AS
+        CREATE UNLOGGED TABLE stage_counties_7day_avg AS
         select
             fc1.fips,
             fc1.date,
@@ -346,7 +346,7 @@ def create_fact_counties_ranked(conn):
 
         DROP TABLE IF EXISTS stage_with_population;
 
-        CREATE TABLE stage_with_population_pre AS
+        CREATE UNLOGGED TABLE stage_with_population_pre AS
             SELECT
                 t1.*
                 ,Population
@@ -357,7 +357,7 @@ def create_fact_counties_ranked(conn):
             LEFT JOIN dim_county t2
                 ON t1.FIPS = t2.FIPS;
 
-        CREATE TABLE stage_with_population AS
+        CREATE UNLOGGED TABLE stage_with_population AS
             SELECT
                 *,
                 DateRank - 1 AS DateRankMinus1,
@@ -376,7 +376,7 @@ def create_fact_counties_ranked(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_with_deltas;
 
-        CREATE TABLE stage_with_deltas as
+        CREATE UNLOGGED TABLE stage_with_deltas as
             select
                 t1.*
                 ,t1.ConfirmedPer1M - t2.ConfirmedPer1M as DeltaConfirmedPer1M
@@ -401,7 +401,7 @@ def create_fact_counties_ranked(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_latest;
 
-        CREATE TABLE stage_latest AS
+        CREATE UNLOGGED TABLE stage_latest AS
             SELECT
                 FIPS
                 ,MAX(ConfirmedPer1M) AS LatestConfirmedPer1M
@@ -419,7 +419,7 @@ def create_fact_counties_ranked(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_with_latest;
 
-        CREATE TABLE stage_with_latest AS
+        CREATE UNLOGGED TABLE stage_with_latest AS
             SELECT
                 t1.*
                 --,date(t1.Date, '+1 day') as DatePlus1Day
@@ -441,7 +441,7 @@ def create_fact_counties_ranked(conn):
     c.execute('''
         DROP TABLE IF EXISTS stage_with_rank;
 
-        CREATE TABLE stage_with_rank AS
+        CREATE UNLOGGED TABLE stage_with_rank AS
             SELECT
                 FIPS
                 ,LatestConfirmedPer1M
@@ -460,7 +460,7 @@ def create_fact_counties_ranked(conn):
     c.execute('''
         DROP TABLE IF EXISTS fact_counties_ranked;
 
-        CREATE TABLE fact_counties_ranked (
+        CREATE UNLOGGED TABLE fact_counties_ranked (
             Date date,
             FIPS text,
             Confirmed int,
@@ -521,7 +521,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS stage_counties_7dayavg_month_change_overall;
 
-        CREATE TABLE stage_counties_7dayavg_month_change_overall AS
+        CREATE UNLOGGED TABLE stage_counties_7dayavg_month_change_overall AS
             SELECT
                 t1.FIPS
                 ,t2.Date
@@ -546,7 +546,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS stage_counties_7dayavg_twoweek_change_overall;
 
-        CREATE TABLE stage_counties_7dayavg_twoweek_change_overall AS
+        CREATE UNLOGGED TABLE stage_counties_7dayavg_twoweek_change_overall AS
             SELECT
                 t1.FIPS
                 ,t2.Date
@@ -572,7 +572,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS stage_counties_one_week_change;
 
-        CREATE TABLE stage_counties_one_week_change AS
+        CREATE UNLOGGED TABLE stage_counties_one_week_change AS
             SELECT
                 t1.FIPS
                 ,t2.Date
@@ -596,7 +596,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS stage_counties_two_week_change;
 
-        CREATE TABLE stage_counties_two_week_change AS
+        CREATE UNLOGGED TABLE stage_counties_two_week_change AS
             SELECT
                 t1.FIPS
                 ,t2.Date
@@ -620,7 +620,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS stage_counties_month_change;
 
-        CREATE TABLE stage_counties_month_change AS
+        CREATE UNLOGGED TABLE stage_counties_month_change AS
             SELECT
                 t1.FIPS
                 ,t2.Date
@@ -643,7 +643,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS stage_counties_doubling_time;
 
-        CREATE TABLE stage_counties_doubling_time AS
+        CREATE UNLOGGED TABLE stage_counties_doubling_time AS
             SELECT
                 FIPS
                 ,Date
@@ -686,7 +686,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS fact_counties_progress;
 
-        CREATE TABLE fact_counties_progress (
+        CREATE UNLOGGED TABLE fact_counties_progress (
             FIPS TEXT,
             Date date,
             Confirmed INT,
@@ -768,7 +768,7 @@ def create_fact_counties_progress(conn):
 
         DROP TABLE IF EXISTS stage_counties_cases_per_100k_change;
 
-        CREATE TABLE stage_counties_cases_per_100k_change AS
+        CREATE UNLOGGED TABLE stage_counties_cases_per_100k_change AS
             SELECT
                 t1.FIPS
                 ,t2.Date
@@ -820,7 +820,7 @@ def create_fact_states(conn):
     c.execute('''
         DROP TABLE IF EXISTS fact_states;
 
-        CREATE TABLE fact_states AS
+        CREATE UNLOGGED TABLE fact_states AS
             select
                 --date(substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2)) AS Date,
                 to_date(Date, 'YYYYMMDD') AS Date,
@@ -878,7 +878,7 @@ def create_fact_nation(conn):
     c.execute('''
         DROP TABLE IF EXISTS fact_nation;
 
-        CREATE TABLE fact_nation AS
+        CREATE UNLOGGED TABLE fact_nation AS
             select
                 date,
                 sum(positive) as positive,

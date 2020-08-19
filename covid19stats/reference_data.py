@@ -27,9 +27,9 @@ def load_county_population(conn):
         DROP TABLE IF EXISTS raw_county_population;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_county_population ('''
+        CREATE UNLOGGED TABLE raw_county_population ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
@@ -41,7 +41,7 @@ def load_county_population(conn):
     c.execute('DROP TABLE IF EXISTS final_fips_population')
 
     c.execute('''
-        CREATE TABLE final_fips_population
+        CREATE UNLOGGED TABLE final_fips_population
         AS SELECT
             STNAME,
             CTYNAME,
@@ -71,7 +71,7 @@ def load_county_population(conn):
     ''');
 
     c.execute('''
-        CREATE TABLE nyc_patch
+        CREATE UNLOGGED TABLE nyc_patch
         AS SELECT
             SUM(Population) as Population
         FROM final_fips_population
@@ -126,9 +126,9 @@ def load_county_gazetteer(conn):
         DROP TABLE IF EXISTS raw_county_gazetteer;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_county_gazetteer ('''
+        CREATE UNLOGGED TABLE raw_county_gazetteer ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
@@ -159,9 +159,9 @@ def load_county_acs_vars(conn):
         DROP TABLE IF EXISTS raw_county_acs;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_county_acs ('''
+        CREATE UNLOGGED TABLE raw_county_acs ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
@@ -171,7 +171,7 @@ def load_county_acs_vars(conn):
     c.execute('''
         DROP TABLE IF EXISTS final_county_acs;
 
-        CREATE TABLE final_county_acs AS
+        CREATE UNLOGGED TABLE final_county_acs AS
             SELECT
                 *
                 ,state || county AS state_and_county
@@ -205,9 +205,9 @@ def load_state_info(conn):
         DROP TABLE IF EXISTS raw_nst_population;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_nst_population ('''
+        CREATE UNLOGGED TABLE raw_nst_population ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
@@ -218,7 +218,7 @@ def load_state_info(conn):
 
     c.execute('DROP TABLE IF EXISTS raw_state_abbreviations')
 
-    c.execute('CREATE TABLE raw_state_abbreviations ( State text , Abbreviation text )')
+    c.execute('CREATE UNLOGGED TABLE raw_state_abbreviations ( State text , Abbreviation text )')
 
     c.execute('''
         INSERT INTO raw_state_abbreviations
