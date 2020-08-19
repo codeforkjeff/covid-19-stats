@@ -28,9 +28,9 @@ def load_covidtracking_states():
         DROP TABLE IF EXISTS raw_covidtracking_states;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_covidtracking_states ('''
+        CREATE UNLOGGED TABLE raw_covidtracking_states ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')

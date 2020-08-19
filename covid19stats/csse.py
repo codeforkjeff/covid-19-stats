@@ -97,9 +97,9 @@ def load_csse():
         DROP TABLE IF EXISTS final_csse;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE final_csse (
+        CREATE UNLOGGED TABLE final_csse (
             Date text,
             FIPS text,
             Admin2 text,
