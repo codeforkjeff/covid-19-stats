@@ -91,7 +91,7 @@ def export_counties_rate_of_change():
     c.execute('''
         SELECT
             t.FIPS,
-            Date,
+            to_char(Date, 'YYYY-MM-DD') AS Date,
             c.County,
             s.StateAbbrev as State,
             c.Lat,
@@ -131,8 +131,50 @@ def export_counties_rate_of_change():
 
     rows = c.fetchall()
 
+    # preserve camelcase
+
+    columns = [
+        'FIPS',
+        'Date',
+        'County',
+        'State',
+        'Lat',
+        'Long_',
+        'Confirmed',
+        'ConfirmedIncrease',
+        'ConfirmedIncreasePct',
+        'Avg7DayConfirmedIncrease',
+        'OneWeekConfirmedIncrease',
+        'OneWeekConfirmedIncreasePct',
+        'TwoWeekConfirmedIncrease',
+        'TwoWeekConfirmedIncreasePct',
+        'MonthConfirmedIncrease',
+        'MonthConfirmedIncreasePct',
+        'TwoWeekAvg7DayConfirmedIncrease',
+        'TwoWeekAvg7DayConfirmedIncreasePct',
+        'MonthAvg7DayConfirmedIncrease',
+        'MonthAvg7DayConfirmedIncreasePct',
+        'Deaths',
+        'DeathsIncrease',
+        'DeathsIncreasePct',
+        'MonthAvg7DayDeathsIncrease',
+        'MonthAvg7DayDeathsIncreasePct',
+        'Population',
+        'CasesPer100k',
+        'OneWeekCasesPer100kChange',
+        'OneWeekCasesPer100kChangePct'
+    ]
+
+    new_rows = []
+
+    for row in rows:
+        new_row = {}
+        for col in columns:
+            new_row[col] = row[col.lower()]
+        new_rows.append(new_row)
+
     with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
-        f.write(json.dumps([row_to_dict(row) for row in rows]))
+        f.write(json.dumps([row_to_dict(row) for row in new_rows]))
 
     conn.close()
 
