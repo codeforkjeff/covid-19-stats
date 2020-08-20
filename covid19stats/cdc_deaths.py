@@ -91,7 +91,7 @@ def load_cdc_deaths():
         INSERT INTO final_cdc_deaths
         SELECT
 	    Jurisdiction_of_Occurrence,
-            MMWR_Year int,
+            MMWR_Year,
             MMWR_Week,
                 substr(Week_Ending_Date, -4, 4) || '-' ||
            	substr('00' || substr(Week_Ending_Date, 1, instr(Week_Ending_Date, '/') - 1), -2, 2) || '-' ||
@@ -105,7 +105,7 @@ def load_cdc_deaths():
         INSERT INTO final_cdc_deaths
         SELECT
 	    Jurisdiction_of_Occurrence,
-            MMWR_Year int,
+            MMWR_Year,
             MMWR_Week,
                 substr(Week_Ending_Date, -4, 4) || '-' ||
            	substr('00' || substr(Week_Ending_Date, 1, instr(Week_Ending_Date, '/') - 1), -2, 2) || '-' ||
