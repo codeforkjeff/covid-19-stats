@@ -10,70 +10,40 @@ def clean_column_name(name):
     return re.sub(r"[^a-zA-Z0-9]", "_", name.strip())
 
 
+def load_tab_delim_file(path, table_name):
+
+    with codecs.open(path, encoding='utf-8-sig') as f:
+        reader = csv.reader(f, delimiter="\t")
+        rows = [blanks_to_none(row) for row in reader]
+        column_names = [clean_column_name(name) for name in rows[0]]
+        rows = rows[1:]
+
+    conn = get_db_conn()
+
+    c = conn.cursor()
+
+    c.execute(f"DROP TABLE IF EXISTS {table_name};")
+
+    # Create table
+    c.execute(f"CREATE TABLE {table_name} (" + ",".join([col + " text" for col in column_names]) + ")")
+
+    c.executemany(f"INSERT INTO {table_name} VALUES (" + ",".join(["?"] * len(column_names)) + ')', rows)
+
+    conn.commit()
+
+
 @timer
 def load_cdc_deaths():
 
-    path = "input/cdc_deaths_2019_2020.txt"
+    load_tab_delim_file("input/cdc_deaths_2019_2020.txt", "raw_cdc_deaths_2019_2020")
 
-    with codecs.open(path, encoding='utf-8-sig') as f:
-        reader = csv.reader(f, delimiter="\t")
-        rows = [blanks_to_none(row) for row in reader]
-        column_names = [clean_column_name(name) for name in rows[0]]
-        rows = rows[1:]
+    load_tab_delim_file("input/cdc_deaths_2014_2018.txt", "raw_cdc_deaths_2014_2018")
+
+    ####
 
     conn = get_db_conn()
 
     c = conn.cursor()
-
-    c.execute('''
-        DROP TABLE IF EXISTS raw_cdc_deaths_2019_2020;
-    ''')
-
-    # Create table
-    c.execute('''
-        CREATE TABLE raw_cdc_deaths_2019_2020 ('''
-            + ",".join([col + " text" for col in column_names]) +
-        ''')
-    ''')
-
-    print(column_names)
-
-    c.executemany('INSERT INTO raw_cdc_deaths_2019_2020 VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
-
-    conn.commit()
-
-    ####
-
-    path = "input/cdc_deaths_2014_2018.txt"
-
-    with codecs.open(path, encoding='utf-8-sig') as f:
-        reader = csv.reader(f, delimiter="\t")
-        rows = [blanks_to_none(row) for row in reader]
-        column_names = [clean_column_name(name) for name in rows[0]]
-        rows = rows[1:]
-
-    conn = get_db_conn()
-
-    c = conn.cursor()
-
-    c.execute('''
-        DROP TABLE IF EXISTS raw_cdc_deaths_2014_2018;
-    ''')
-
-    # Create table
-    c.execute('''
-        CREATE TABLE raw_cdc_deaths_2014_2018 ('''
-            + ",".join([col + " text" for col in column_names]) +
-        ''')
-    ''')
-
-    print(column_names)
-
-    c.executemany('INSERT INTO raw_cdc_deaths_2014_2018 VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
-
-    conn.commit()
-
-    ####
 
     c.execute('DROP TABLE IF EXISTS final_cdc_deaths')
 
