@@ -28,6 +28,10 @@ def timer(func):
     return wrapper_timer
 
 
+def blanks_to_none(row):
+    return [(val if val != '' else None) for val in row]
+
+
 def row_to_dict(row):
     d = {}
     for column in row.keys():
