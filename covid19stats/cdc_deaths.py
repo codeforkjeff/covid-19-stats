@@ -38,7 +38,7 @@ def load_cdc_deaths():
 
     print(column_names)
 
-    c.executemany('INSERT INTO raw_cdc_deaths_2019_2020 VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_cdc_deaths_2019_2020 VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
 
     conn.commit()
 
@@ -69,7 +69,7 @@ def load_cdc_deaths():
 
     print(column_names)
 
-    c.executemany('INSERT INTO raw_cdc_deaths_2014_2018 VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    c.executemany('INSERT INTO raw_cdc_deaths_2014_2018 VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
 
     conn.commit()
 
@@ -82,7 +82,7 @@ def load_cdc_deaths():
             State text,
             Year int,
             Week_Of_Year int,
-            Week_Ending_Date text,
+            Week_Ending_Date date,
             All_Cause int
         )
     ''')
@@ -91,13 +91,14 @@ def load_cdc_deaths():
         INSERT INTO final_cdc_deaths
         SELECT
 	    Jurisdiction_of_Occurrence,
-            MMWR_Year int,
-            MMWR_Week,
-                substr(Week_Ending_Date, -4, 4) || '-' ||
-           	substr('00' || substr(Week_Ending_Date, 1, instr(Week_Ending_Date, '/') - 1), -2, 2) || '-' ||
-          	substr('00' || replace(substr(Week_Ending_Date, instr(Week_Ending_Date, '/') + 1), '/2020', ''), -2, 2)
-            AS Week_Ending_Date,
-	    All_Cause
+            cast(MMWR_Year as int),
+            cast(MMWR_Week as int),
+            to_date(
+                right(Week_Ending_Date, 4) || '-' ||
+           	right(substr(Week_Ending_Date, 1, position('/' in Week_Ending_Date) - 1), 2) || '-' ||
+          	right(replace(substr(Week_Ending_Date, position('/' in Week_Ending_Date) + 1), '/2020', ''), 2)
+            ,'YYYY-MM-DD') AS Week_Ending_Date,
+	    cast(All_Cause as int)
         FROM raw_cdc_deaths_2019_2020;
     ''')
 
@@ -105,13 +106,14 @@ def load_cdc_deaths():
         INSERT INTO final_cdc_deaths
         SELECT
 	    Jurisdiction_of_Occurrence,
-            MMWR_Year int,
-            MMWR_Week,
-                substr(Week_Ending_Date, -4, 4) || '-' ||
-           	substr('00' || substr(Week_Ending_Date, 1, instr(Week_Ending_Date, '/') - 1), -2, 2) || '-' ||
-          	substr('00' || replace(substr(Week_Ending_Date, instr(Week_Ending_Date, '/') + 1), '/2020', ''), -2, 2)
-            AS Week_Ending_Date,
-	    All__Cause
+            cast(MMWR_Year as int),
+            cast(MMWR_Week as int),
+            to_date(
+                right(Week_Ending_Date, 4) || '-' ||
+           	right(substr(Week_Ending_Date, 1, position('/' in Week_Ending_Date) - 1), 2) || '-' ||
+          	right(replace(substr(Week_Ending_Date, position('/' in Week_Ending_Date) + 1), '/2020', ''), 2)
+            ,'YYYY-MM-DD') AS Week_Ending_Date,
+	    cast(All__Cause as int)
         FROM raw_cdc_deaths_2014_2018;
     ''')
 
