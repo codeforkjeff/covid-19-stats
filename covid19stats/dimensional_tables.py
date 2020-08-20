@@ -890,7 +890,14 @@ def create_fact_state_deaths(conn):
             Covid19DeathsForWeek int
         );
 
-        with covid19deaths as (
+        with end_dates as (
+            Select distinct
+                Week_Ending_Date AS end_date
+            FROM final_cdc_deaths
+            WHERE
+                Year = 2020
+        ),
+        covid19deaths as (
             select
                 state,
                 end_date,
