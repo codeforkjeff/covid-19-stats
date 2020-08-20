@@ -182,7 +182,7 @@
             }
 
             //$.ajax("daily.json").done(function(data) {
-            $.ajax("https://covidtracking.com/api/v1/states/daily.json").done(function(data) {
+            $.ajax("https://api.covidtracking.com/v1/states/daily.json").done(function(data) {
               
               data = data.filter(row => row.state != 'AS');
 
