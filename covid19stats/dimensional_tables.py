@@ -875,7 +875,7 @@ def create_fact_state_deaths(conn):
 
     c = conn.cursor()
 
-    c.executescript('''
+    c.execute('''
         DROP TABLE IF EXISTS fact_state_deaths;
 
         CREATE TABLE fact_state_deaths (
@@ -906,7 +906,7 @@ def create_fact_state_deaths(conn):
             cross join end_dates
             WHERE
                 DATE <= end_date
-                AND DATE >= date(end_date, '-6 days')
+                AND DATE >= end_date - interval '6 days'
             group by state, end_date
         ),
         avg_by_week as (
