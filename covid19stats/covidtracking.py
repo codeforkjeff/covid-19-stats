@@ -2,11 +2,7 @@
 import codecs
 import csv
 
-from .common import get_db_conn, timer, touch_file
-
-
-def blanks_to_none(row):
-    return [(val if val != '' else None) for val in row]
+from .common import blanks_to_none, get_db_conn, timer, touch_file
 
 
 @timer

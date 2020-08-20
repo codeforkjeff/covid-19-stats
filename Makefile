@@ -12,7 +12,7 @@ all: \
 
 stage/dimensional_models.loaded: \
 	$(modules) covid19stats/dimensional_tables.py \
-	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded 
+	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded stage/cdc_deaths.loaded
 
 	python3 -m covid19stats.dimensional_tables
 
@@ -21,6 +21,12 @@ stage/csse.loaded: \
 	../COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv
 
 	python3 -m covid19stats.csse
+
+stage/cdc_deaths.loaded: \
+	$(modules) covid19stats/cdc_deaths.py \
+	input/cdc_deaths_2019_2020.txt
+
+	python3 -m covid19stats.cdc_deaths
 
 stage/reference_data.loaded: \
 	$(modules) covid19stats/reference_data.py \
@@ -40,6 +46,8 @@ depend:
 	cd ~/COVID-19 && git pull
 
 	python3 -m covid19stats.covidtracking_download
+
+	python3 -m covid19stats.cdc_deaths_download
 
 	python3 -m covid19stats.reference_data_download
 
