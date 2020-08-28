@@ -3,7 +3,7 @@ import codecs
 import csv
 import re
 
-from .common import blanks_to_none, get_db_conn, timer, touch_file
+from .common import blanks_to_none, get_db_conn, fast_bulk_insert, timer, touch_file
 
 
 def clean_column_name(name):
@@ -27,7 +27,8 @@ def load_tab_delim_file(path, table_name):
     # Create table
     c.execute(f"CREATE TABLE {table_name} (" + ",".join([col + " text" for col in column_names]) + ")")
 
-    c.executemany(f"INSERT INTO {table_name} VALUES (" + ",".join(["%s"] * len(column_names)) + ')', rows)
+    #c.executemany(f"INSERT INTO {table_name} VALUES (" + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, table_name)
 
     conn.commit()
 
