@@ -3,7 +3,7 @@ import codecs
 import csv
 import os.path
 
-from .common import get_db_conn, timer, touch_file
+from .common import get_db_conn, fast_bulk_insert, timer, touch_file
 
 
 @timer
@@ -34,7 +34,8 @@ def load_county_population(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, 'raw_county_population')
 
     conn.commit()
 
@@ -133,7 +134,8 @@ def load_county_gazetteer(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, 'raw_county_gazetteer')
 
 
 @timer
@@ -166,7 +168,8 @@ def load_county_acs_vars(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn,rows,'raw_county_acs')
 
     c.execute('''
         DROP TABLE IF EXISTS final_county_acs;
@@ -212,7 +215,8 @@ def load_state_info(conn):
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, 'raw_nst_population')
 
     conn.commit()
 

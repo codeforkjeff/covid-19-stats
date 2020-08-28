@@ -156,7 +156,9 @@ def load_csse():
     c.execute('''
         UPDATE final_csse
         SET
-            FIPS = right('0000000000' || FIPS, 5)
+            FIPS = right('0000000000' ||
+                CASE WHEN position('.' in FIPS) > 0 THEN substr(FIPS, 1, position('.' in FIPS) - 1) ELSE FIPS END
+            , 5)
         WHERE
             ShouldHaveFIPS = 1
             AND length(fips) <> 5

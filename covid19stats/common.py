@@ -4,6 +4,7 @@
 from collections import namedtuple
 import functools
 import hashlib
+import io
 import os
 import os.path
 import pathlib
@@ -33,6 +34,10 @@ def blanks_to_none(row):
     return [(val if val != '' else None) for val in row]
 
 
+def none_to_blanks(row):
+    return [(val if val is not None else '') for val in row]
+
+
 def row_to_dict(row):
     d = {}
     for column in row.keys():
@@ -41,10 +46,21 @@ def row_to_dict(row):
 
 
 def get_db_conn():
-    conn = psycopg2.connect(database="covid19")
+    conn = psycopg2.connect(database="covid19", host="localhost", user="postgres", password="zzz", port=5433)
     #conn = sqlite3.connect('stage/covid19.db')
     #conn.row_factory = sqlite3.Row
     return conn
+
+
+def fast_bulk_insert(conn, rows, table):
+    buf = io.StringIO()
+    for row in rows:
+        buf.write("\t".join(none_to_blanks(row)))
+        buf.write("\n")
+    buf.seek(0)
+
+    c = conn.cursor()
+    c.copy_from(buf, table, sep="\t", null='',size=200000)
 
 
 def touch_file(path):
