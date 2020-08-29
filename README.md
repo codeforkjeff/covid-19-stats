@@ -33,15 +33,16 @@ the `data/` directory.
 ## Simple Choropleth Map of Outbreaks
 
 This uses the metric of "25 or higher new cases per 100k in the last 2 weeks." This is one of the measures used by WA
-tate at the start of the pandemic to determine which counties could move to later stages of reopening.
+state at the start of the pandemic to determine which counties could move to later stages of reopening. So it's a
+a helpful working definition of "outbreak."
 
 <https://codeforkjeff.github.io/covid-19-stats/outbreaks_simple.html>
 
 ## Overly Complicated Map of Outbreaks
 
-This was an initial effort that ended up way too busy-looking and complicated to understand. What's useful about it,
-though, is the color coding to show which counties are trending up and downwards over the last 2 weeks. You can't tell
-this information at a glance in the simpler choropleth map.
+This was an initial effort that ended up way too busy-looking and complicated to understand. What I still like about it,
+though, is the color coding to show which counties have been trending upwards or downwards over the last 2 weeks. You
+can't tell this information at a glance in the simpler choropleth map.
 
 <https://codeforkjeff.github.io/covid-19-stats/outbreaks.html>
 
