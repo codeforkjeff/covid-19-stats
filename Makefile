@@ -41,9 +41,9 @@ stage/covidtracking.loaded: input/covidtracking_states.csv
 # in the context of this build, 'depend' is for downloading/updating input data
 depend:
 
-	@if ! [ -d ~/COVID-19 ]; then echo "COVID-19 directory doesn't exist! clone that repo first"; exit 1; fi
+	@if ! [ -d ../COVID-19 ]; then echo "COVID-19 directory doesn't exist! clone that repo first"; exit 1; fi
 
-	cd ~/COVID-19 && git pull
+	cd ../COVID-19 && git pull
 
 	python3 -m covid19stats.covidtracking_download
 
