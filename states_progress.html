@@ -184,7 +184,7 @@
             //$.ajax("daily.json").done(function(data) {
             $.ajax("https://api.covidtracking.com/v1/states/daily.json").done(function(data) {
               
-              data = data.filter(row => row.state != 'AS');
+              data = data.filter(row => row.state != 'AS' && row.positiveIncrease >= 0);
 
               // make records for US as a whole
               var us_records = data.reduce((acc, row) => {
