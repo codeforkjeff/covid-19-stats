@@ -30,6 +30,12 @@ the `data/` directory.
 
 # Charts and Tables
 
+## Choropleth Map of Two Week Trends by County
+
+Shows trends at the county level over the last two weeks.
+
+<https://codeforkjeff.github.io/covid-19-stats/counties_trends.html>
+
 ## Simple Choropleth Map of Outbreaks
 
 This uses the metric of "25 or higher new cases per 100k in the last 2 weeks." This is one of the measures used by WA

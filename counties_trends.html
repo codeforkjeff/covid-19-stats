@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>COVID-19 County Trends</title>
+
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js" integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew==" crossorigin=""></script>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
+
+	<style>
+		#county-count {
+			font-weight: bold;
+		}
+		#controls {
+			margin-bottom: 10px;
+		}
+		#map-container {
+			position: relative;
+		}
+		#map {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			width: 100%;
+		}
+		.county-table {
+			border-collapse: collapse;
+		}
+		.county-table td {
+			padding: 1px;
+		}
+		.county-table tr:nth-child(1) {
+			font-weight: bold;
+		}
+		.county-table td:nth-child(1) {
+			white-space: nowrap;
+		}
+		.county-table td:nth-child(2) {
+			text-align: right;
+		}
+		.county-table td:nth-child(3) {
+			padding-left: 1em;
+			text-align: right;
+		}
+		.info {
+			padding: 6px 8px;
+			font: 14px/16px Arial, Helvetica,
+			sans-serif; background: white;
+			background: rgba(255,255,255,0.8);
+			box-shadow: 0 0 15px rgba(0,0,0,0.2);
+			border-radius: 5px;
+		}
+		.info h4 {
+			margin: 0 0 5px;
+			color: #777;
+		}
+		.legend {
+			text-align: left;
+			line-height: 18px;
+			color: #555;
+		}
+		.legend i {
+			width: 18px;
+			height: 18px;
+			float: left;
+			margin-right: 8px;
+			opacity: 0.7;
+		}
+
+      .smalltext
+      {
+        font-size: 11px;
+      }
+      .centered
+      {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+      }
+      .left {
+        float: left;
+      }
+      .right {
+        float: right;
+      }
+
+	</style>
+</head>
+<body>
+
+	<div id="top">
+	<h2 id="heading"></h2>
+
+	<p>Change over last 2 weeks in the 7 day avg of the new daily case count. Red = getting worse, blue = getting better.
+
+    </div>
+
+	<div id="map-container">
+		<div id="map"></div>
+	</div>
+	<script>
+
+$(document).ready(function() {
+	const KM_PER_MI = 2589988;
+
+	var mymap;
+	var counties_layer;
+	var counties_geojson;
+
+	var mult_num_cases;
+	var mult_pct;
+
+	var circles = [];
+	var county_data;
+	var sparkline_data = {};
+	var last_sparkline_chart;
+
+	function createSparkline(ctx, data) {
+	  return new Chart(ctx, {
+	    type: 'line',
+	    data: {
+	      labels: new Array(data.length),
+	      datasets: [
+	        {
+	          data: data
+	        }
+	      ]
+	    },
+	    options: {
+	      responsive: false,
+	      legend: {
+	        display: false
+	      },
+	      elements: {
+	        line: {
+	          borderColor: '#000000',
+	          borderWidth: 1
+	        },
+	        point: {
+	          radius: 0
+	        }
+	      },
+	      tooltips: {
+	        enabled: true
+	      },
+	      scales: {
+	        yAxes: [
+	          {
+	            display: false,
+	            ticks: {
+	              // relative to 0, otherwise it's confusing
+	              min: 0
+	            }
+	          }
+	        ],
+	        xAxes: [
+	          {
+	            display: false
+	          },
+	        ]
+	      }
+	    }
+	  });
+	}
+
+	function create_comparator(attr) {
+        return function(a,b) {
+        	var x = a[attr] || 0;
+        	var y = b[attr] || 0;
+	        return x < y ? -1 : (x > y ? 1 : 0);
+        };
+	}
+
+	function resize_map_container() {
+		var top_size = $("#top").height();
+	    document.getElementById("map-container").style.height = (window.innerHeight - top_size - 50) + "px";
+	}
+
+	function draw_counties() {
+
+		if(counties_layer) {
+			counties_layer.remove();
+		}
+
+		counties_layer = L.geoJson(counties_geojson, {
+			style: function(feature) {
+				var fips = feature.properties.STATE + feature.properties.COUNTY;
+
+				var record = county_data[fips];
+
+				if(record) {
+					var color = "#fff0";
+                    // https://www.tutorialrepublic.com/html-reference/html-color-picker.php
+                    
+                    if(record.TwoWeekAvg7DayConfirmedIncrease > 0) {
+                        // null pct means it was 0 two weeks ago
+                        if(record.TwoWeekAvg7DayConfirmedIncreasePct == null || record.TwoWeekAvg7DayConfirmedIncreasePct <= .25) {
+                            color = "#FFB2B2";
+                        } else if (record.TwoWeekAvg7DayConfirmedIncreasePct <= .5) {
+                            color = "#FF9999";
+                        } else if (record.TwoWeekAvg7DayConfirmedIncreasePct <= .75) {
+                            color = "#FF7F7F";
+                        } else if (record.TwoWeekAvg7DayConfirmedIncreasePct <= 1) {
+                            color = "#FF6666";
+                        } else {
+                            color = "#FF3333";
+  	                    }
+                    } else if(record.TwoWeekAvg7DayConfirmedIncrease < 0) {
+                        // null pct means it was 0 two weeks ago
+                        if(record.TwoWeekAvg7DayConfirmedIncreasePct == null || record.TwoWeekAvg7DayConfirmedIncreasePct >= -.25) {
+                            color = "#CCCCFF";
+                        } else if (record.TwoWeekAvg7DayConfirmedIncreasePct >= -.5) {
+                            color = "#B2B2FF";
+                        } else if (record.TwoWeekAvg7DayConfirmedIncreasePct >= -.75) {
+                            color = "#9999FF";
+                        } else if (record.TwoWeekAvg7DayConfirmedIncreasePct >= -1) {
+                            color = "#7F7FFF";
+                        } else {
+                            color = "#6666FF";
+  	                    }
+                    }
+
+					return {
+						fillColor: color,
+						fillOpacity: 0.8,
+						weight: 0.5,
+						// boundary color
+						color: "#999",
+					};
+				}
+				return {
+					weight: 2,
+					fillOpacity: 0,
+					weight: 0.5,
+					//color: "rgba(255, 255, 255, 0)"
+					color: "#999"
+				};
+			},
+			onEachFeature: function(feature, county) {
+				var fips = feature.properties.STATE + feature.properties.COUNTY;
+
+				var record = county_data[fips];
+
+				if(record) {
+					county.bindPopup(
+						`
+						<table class="county-table">
+						<tr>
+							<td>County: ${record.County}, ${record.State}</td>
+							<td></td>
+							<td></td>
+						</tr>
+						<tr>
+							<td>Population:</td>
+							<td>${record.Population ? record.Population.toFixed(2): ""}</td>
+							<td></td>
+						</tr>
+						<tr>
+							<td>Total Cases to Date:</td>
+							<td>${record.Confirmed.toFixed(2)}</td>
+							<td></td>
+						</tr>
+						<tr>
+							<td colspan="3">7 Day Avg of New Cases, Last 14 Days:</td>
+						</tr>
+						<tr>
+							<td colspan="3">
+		                  <canvas class='centered sparkline' data-fips='${record.FIPS}' id='sparkline-${record.FIPS}' width='250' height='100'></canvas><div class='centered smalltext' style='width: 250px;'><span class='left' id='sparkline-start-${record.FIPS}'></span><span class='right' id='sparkline-end-${record.FIPS}'></span></div>
+							</td>
+						</tr>
+						</table>
+						`, {
+						  maxWidth: "auto"
+						})
+						.on('popupopen', function (popup) {
+							// this has to be redrawn on each popup event because leaflet seems
+							// to re-insert the html 
+
+							if(last_sparkline_chart) {
+								last_sparkline_chart.destroy();
+							}
+
+							var elem = document.getElementById("sparkline-" + record.FIPS);
+
+							var ctx = elem.getContext('2d');
+							last_sparkline_chart = createSparkline(ctx, sparkline_data[record.FIPS]);
+
+							var last = sparkline_data[record.FIPS].length - 1;
+
+							$("#sparkline-start-" + record.FIPS).html(sparkline_data[record.FIPS][0].toFixed(2));
+							$("#sparkline-end-" + record.FIPS).html(sparkline_data[record.FIPS][last].toFixed(2));
+                        });
+				} else { 
+					county.bindPopup('No info for this county (FIPS code ' + fips + ')');
+				}
+			  }
+
+		}).addTo(mymap);
+	}
+
+    $.when(
+
+		$.get("data/counties_rate_of_change.json?" + new Date().getTime()).done(function(data) {
+
+			var date = data[0]['Date'];
+			$("#heading").html("COVID-19 County Trends - As of " + date);
+
+			$("#county-count").html(data.filter(r => r.OutbreakFlag).length);
+
+	    	county_data = data.reduce((acc, record) => {
+	    		acc[record.FIPS] = record;
+	    		return acc;
+	    	}, {});
+	    }),
+
+		$.get("data/counties_7day_avg.txt?" + new Date().getTime(), function(data) {
+
+		  var lines = data.split("\n");
+		  lines.forEach(line => {
+		    var pieces = line.split("\t")
+		    var row = {
+		      FIPS: pieces[0],
+		      Date: pieces[1],
+		      Avg7DayConfirmedIncrease: parseFloat(pieces[2])
+		    };
+
+		    if(!sparkline_data[row.FIPS]) {
+		      sparkline_data[row.FIPS] = [];
+		    }
+		    sparkline_data[row.FIPS].push(row.Avg7DayConfirmedIncrease);
+		  });
+
+          // take last 2 weeks
+          Object.keys(sparkline_data).forEach(fips => {
+              var size = sparkline_data[fips].length;
+              sparkline_data[fips] = sparkline_data[fips].slice(size - 15, size);
+          });
+            
+		}),
+
+		// https://eric.clst.org/tech/usgeojson/
+		$.get("data/gz_2010_us_050_00_500k.json?" + new Date().getTime()).done(function(data) {	
+			counties_geojson = data;
+		})
+
+    ).then(function() {
+		resize_map_container();
+
+		mymap = L.map('map').setView([37.0902, -95.7129], 5);
+
+		L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiYWJzb2x1dGVseWplZmYiLCJhIjoiY2tjZWR4MHF1MDExczJzbnE5NW9ndjJwNiJ9.qhl-MLfZfDvdm7tdI01NAA', {
+			maxZoom: 18,
+			attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+				'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+				'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+			id: 'mapbox/light-v10',
+			tileSize: 512,
+			zoomOffset: -1
+		}).addTo(mymap);
+
+		var legend = L.control({position: 'bottomright'});
+
+		legend.onAdd = function (map) {
+
+		    var div = L.DomUtil.create('div', 'info legend');
+
+		    div.innerHTML += "<div>Change Over 2 Weeks</div>"
+		    div.innerHTML += "<i style='background: #FF3333'></i>&gt; 100% increase<br/>";
+		    div.innerHTML += "<i style='background: #FF6666'></i>76 - 100% increase<br/>";
+		    div.innerHTML += "<i style='background: #FF7F7F'></i>51 - 75% increase<br/>";
+		    div.innerHTML += "<i style='background: #FF9999'></i>26 - 50% increase<br/>";
+		    div.innerHTML += "<i style='background: #FFB2B2'></i>1 - 25% increase<br/>";
+
+            div.innerHTML += "<i style='background: #FFFFFF'></i>No change<br/>";
+
+		    div.innerHTML += "<i style='background: #CCCCFF'></i>1 - 25% decrease<br/>";
+		    div.innerHTML += "<i style='background: #B2B2FF'></i>26 - 50% decrease<br/>";
+		    div.innerHTML += "<i style='background: #9999FF'></i>51 - 75% decrease<br/>";
+		    div.innerHTML += "<i style='background: #7F7FFF'></i>76 - 100% decrease<br/>";
+		    div.innerHTML += "<i style='background: #6666FF'></i>&gt; 100% decrease<br/>";
+
+		    return div;
+		};
+
+		legend.addTo(mymap);
+
+    	draw_counties();
+	});
+    
+	$(window).resize(resize_map_container);
+});
+
+	</script>
+
+</body>
+</html>

@@ -704,7 +704,7 @@ def create_fact_counties_progress(conn):
             coalesce(MonthConfirmedIncrease, 0) AS MonthConfirmedIncrease,
             coalesce(MonthConfirmedIncreasePct, 0) AS MonthConfirmedIncreasePct,
             coalesce(TwoWeekAvg7DayConfirmedIncrease, 0) as TwoWeekAvg7DayConfirmedIncrease,
-            coalesce(TwoWeekAvg7DayConfirmedIncreasePct, 0) as TwoWeekAvg7DayConfirmedIncreasePct,
+            TwoWeekAvg7DayConfirmedIncreasePct as TwoWeekAvg7DayConfirmedIncreasePct,
             coalesce(MonthAvg7DayConfirmedIncrease, 0) AS MonthAvg7DayConfirmedIncrease,
             coalesce(MonthAvg7DayConfirmedIncreasePct, 0) AS MonthAvg7DayConfirmedIncreasePct,
             t.Deaths,
