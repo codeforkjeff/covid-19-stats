@@ -63,10 +63,7 @@ def load_cdc_deaths():
 	    Jurisdiction_of_Occurrence,
             MMWR_Year,
             MMWR_Week,
-                substr(Week_Ending_Date, -4, 4) || '-' ||
-           	substr('00' || substr(Week_Ending_Date, 1, instr(Week_Ending_Date, '/') - 1), -2, 2) || '-' ||
-          	substr('00' || replace(substr(Week_Ending_Date, instr(Week_Ending_Date, '/') + 1), '/2020', ''), -2, 2)
-            AS Week_Ending_Date,
+            Week_Ending_Date,
 	    All_Cause
         FROM raw_cdc_deaths_2019_2020;
     ''')
