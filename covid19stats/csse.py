@@ -156,9 +156,7 @@ def load_csse():
     c.execute('''
         UPDATE final_csse
         SET
-            FIPS = substr('0000000000' ||
-                CASE WHEN FIPS LIKE '%.%' THEN substr(FIPS, 1, position('.' in FIPS) - 1) ELSE FIPS END
-            , -5, 5)
+            FIPS = lpad(CAST(CAST(CAST(FIPS as FLOAT) as INT) as VARCHAR), 5, '0')
         WHERE
             ShouldHaveFIPS = 1
             AND length(fips) <> 5
