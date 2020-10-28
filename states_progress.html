@@ -58,6 +58,9 @@
       .right {
         float: right;
       }
+      .hidden {
+          display: none;
+      }
     </style>
 
     <script>
@@ -184,7 +187,7 @@
             //$.ajax("daily.json").done(function(data) {
             $.ajax("https://api.covidtracking.com/v1/states/daily.json").done(function(data) {
               
-              data = data.filter(row => row.state != 'AS');
+              data = data.filter(row => row.state != 'AS' && row.positiveIncrease >= 0);
 
               // make records for US as a whole
               var us_records = data.reduce((acc, row) => {
@@ -277,6 +280,9 @@
                 ];
               });
 
+              $('#loading').hide();
+              $('#states').show();
+                
               table = $('#states')
                 .on('draw.dt', initSparklines)
                 .DataTable({
@@ -334,7 +340,9 @@
 
   <p>Source: <a href="https://covidtracking.com/">The COVID Tracking Project</a>
 
-  <table id="states" class="display cell-border" style="width: 100%">
+  <p id="loading">Loading, hang on...</p>
+      
+  <table id="states" class="display cell-border hidden" style="width: 100%">
     <thead>
       <tr class="heading-row-1">
         <th></th>

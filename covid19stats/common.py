@@ -8,6 +8,7 @@ import io
 import os
 import os.path
 import pathlib
+import shutil
 import sqlite3
 import time
 import urllib.request
@@ -111,7 +112,8 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
     if downloaded:
         if replace:
             print("Downloaded file is different, replacing file")
-            os.rename(path_latest, path)
+            #os.rename(path_latest, path)
+            shutil.move(path_latest, path)
         else:
             os.remove(path_latest)
 

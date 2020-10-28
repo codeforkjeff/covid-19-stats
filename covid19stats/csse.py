@@ -68,8 +68,8 @@ def load_csse():
 
     conn = get_db_conn()
 
-    # assumes COVID-19 repo has been cloned to home directory
-    spec = os.path.join(os.getenv("HOME"), 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
+    # TODO: should probably use path relative to this .py file
+    spec = os.path.join('..', 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
     print(f"Looking for files: {spec}")
     paths = [Path(path, get_sortable_date(path)) for path in glob.glob(spec)]
 
@@ -156,9 +156,9 @@ def load_csse():
     c.execute('''
         UPDATE final_csse
         SET
-            FIPS = right('0000000000' ||
-                CASE WHEN position('.' in FIPS) > 0 THEN substr(FIPS, 1, position('.' in FIPS) - 1) ELSE FIPS END
-            , 5)
+            FIPS = substr('0000000000' ||
+                CASE WHEN FIPS LIKE '%.%' THEN substr(FIPS, 1, instr(FIPS, '.') - 1) ELSE FIPS END
+            , -5, 5)
         WHERE
             ShouldHaveFIPS = 1
             AND length(fips) <> 5

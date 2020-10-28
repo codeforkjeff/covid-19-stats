@@ -525,10 +525,10 @@ def create_fact_counties_progress(conn):
             SELECT
                 t1.FIPS
                 ,t2.Date
-                ,greatest(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease, 0) AS MonthAvg7DayConfirmedIncrease
-                ,greatest((t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / nullif(t1.Avg7DayConfirmedIncrease,0), 0) AS MonthAvg7DayConfirmedIncreasePct
-                ,greatest(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease, 0) AS MonthAvg7DayDeathsIncrease
-                ,greatest((t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / nullif(t1.Avg7DayDeathsIncrease, 0), 0) AS MonthAvg7DayDeathsIncreasePct
+                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncrease
+                ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncreasePct
+                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncrease
+                ,(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncreasePct
             FROM fact_counties_base t1
             JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
@@ -550,10 +550,10 @@ def create_fact_counties_progress(conn):
             SELECT
                 t1.FIPS
                 ,t2.Date
-                ,greatest(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease, 0) AS TwoWeekAvg7DayConfirmedIncrease
-                ,greatest((t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / nullif(t1.Avg7DayConfirmedIncrease, 0), 0) AS TwoWeekAvg7DayConfirmedIncreasePct
-                ,greatest(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease, 0) AS TwoWeekAvg7DayDeathsIncrease
-                ,greatest((t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / nullif(t1.Avg7DayDeathsIncrease, 0), 0) AS TwoWeekAvg7DayDeathsIncreasePct
+                ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS TwoWeekAvg7DayConfirmedIncrease
+                ,(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease AS TwoWeekAvg7DayConfirmedIncreasePct
+                ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS TwoWeekAvg7DayDeathsIncrease
+                ,(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease AS TwoWeekAvg7DayDeathsIncreasePct
             FROM fact_counties_base t1
             JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
@@ -576,8 +576,8 @@ def create_fact_counties_progress(conn):
             SELECT
                 t1.FIPS
                 ,t2.Date
-                ,greatest(t2.Confirmed - coalesce(t1.Confirmed, 0), 0) AS OneWeekConfirmedIncrease
-                ,greatest((t2.Confirmed - t1.Confirmed) / nullif(CAST(t1.Confirmed AS REAL), 0), 0) AS OneWeekConfirmedIncreasePct
+                ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS OneWeekConfirmedIncrease
+                ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS OneWeekConfirmedIncreasePct
             FROM fact_counties_base t1
             JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
@@ -600,8 +600,8 @@ def create_fact_counties_progress(conn):
             SELECT
                 t1.FIPS
                 ,t2.Date
-                ,greatest(t2.Confirmed - coalesce(t1.Confirmed, 0), 0) AS TwoWeekConfirmedIncrease
-                ,greatest((t2.Confirmed - t1.Confirmed) / nullif(CAST(t1.Confirmed AS REAL), 0), 0) AS TwoWeekConfirmedIncreasePct
+                ,t2.Confirmed - coalesce(t1.Confirmed, 0) AS TwoWeekConfirmedIncrease
+                ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS TwoWeekConfirmedIncreasePct
             FROM fact_counties_base t1
             JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
@@ -624,8 +624,8 @@ def create_fact_counties_progress(conn):
             SELECT
                 t1.FIPS
                 ,t2.Date
-                ,greatest(t2.Confirmed - coalesce(t1.Confirmed,0), 0) AS MonthConfirmedIncrease
-                ,greatest((t2.Confirmed - t1.Confirmed) / nullif(CAST(t1.Confirmed AS REAL), 0), 0) AS MonthConfirmedIncreasePct
+                ,t2.Confirmed - coalesce(t1.Confirmed,0) AS MonthConfirmedIncrease
+                ,(t2.Confirmed - t1.Confirmed) / CAST(t1.Confirmed AS REAL) AS MonthConfirmedIncreasePct
             FROM fact_counties_base t1
             JOIN fact_counties_base t2
                 ON t1.FIPS = t2.FIPS
@@ -729,7 +729,7 @@ def create_fact_counties_progress(conn):
             coalesce(MonthConfirmedIncrease, 0) AS MonthConfirmedIncrease,
             coalesce(MonthConfirmedIncreasePct, 0) AS MonthConfirmedIncreasePct,
             coalesce(TwoWeekAvg7DayConfirmedIncrease, 0) as TwoWeekAvg7DayConfirmedIncrease,
-            coalesce(TwoWeekAvg7DayConfirmedIncreasePct, 0) as TwoWeekAvg7DayConfirmedIncreasePct,
+            TwoWeekAvg7DayConfirmedIncreasePct as TwoWeekAvg7DayConfirmedIncreasePct,
             coalesce(MonthAvg7DayConfirmedIncrease, 0) AS MonthAvg7DayConfirmedIncrease,
             coalesce(MonthAvg7DayConfirmedIncreasePct, 0) AS MonthAvg7DayConfirmedIncreasePct,
             t.Deaths,
@@ -826,7 +826,7 @@ def create_fact_states(conn):
                 to_date(Date, 'YYYYMMDD') AS Date,
                 state,
                 CAST(positive AS INT) AS positive,
-                CAST(positiveIncrease AS INT) AS positiveIncrease,
+                CASE WHEN CAST(positiveIncrease AS INT) < 0 THEN 0 ELSE CAST(positiveIncrease AS INT) END AS positiveIncrease,
                 CAST(death AS INT) AS death,
                 CAST(deathIncrease AS INT) AS deathIncrease,
                 CAST(hospitalized AS INT) AS hospitalized,
