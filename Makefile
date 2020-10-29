@@ -1,20 +1,22 @@
 # 
-# use empty .loaded files to track the last time portions of the database were updated
-# since make can't peek inside the database for dependencies.
+# we use stage/*.loaded targets to trigger reloading data into the database
+# when a dataset needs to be refreshed.
+#
+# TODO: communicate to dbt what models need to be run
 
 modules = covid19stats/common.py
 
 all: \
 	$(modules) covid19stats/exports.py \
-	stage/csse.loaded stage/reference_data.loaded stage/dimensional_models.loaded
+	stage/transforms.updated
 
 	python3 -m covid19stats.exports
 
-stage/dimensional_models.loaded: \
-	$(modules) covid19stats/dimensional_tables.py \
+stage/transforms.updated: \
 	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded stage/cdc_deaths.loaded
 
-	python3 -m covid19stats.dimensional_tables
+	dbt run
+	touch stage/transforms.updated
 
 stage/csse.loaded: \
 	$(modules) covid19stats/csse.py \
@@ -38,7 +40,7 @@ stage/covidtracking.loaded: input/covidtracking_states.csv
 
 	python3 -m covid19stats.covidtracking
 
-# in the context of this build, 'depend' is for downloading/updating input data
+# 'depend' is the extract phase of ELT
 depend:
 
 	@if ! [ -d ../COVID-19 ]; then echo "COVID-19 directory doesn't exist! clone that repo first"; exit 1; fi
