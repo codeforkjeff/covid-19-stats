@@ -10,11 +10,46 @@ What's in this repo:
 
 # How to Run This
 
+Install postgresql if you don't already have it running somewhere. Create a database
+and a user account that can access it.
+
 Set up a Python environment using `requirements.txt`
 
 Clone the following repo in the same directory where you cloned this repo, to get
 the data files:
 https://github.com/CSSEGISandData/COVID-19
+
+Create a `.dbt/profiles.yml` file if you don't already have one. Append the
+following to it:
+
+```
+covid19:
+  outputs:
+
+    dev:
+      # modify as needed
+      type: postgres
+      threads: 1
+      host: localhost
+      port: 5432
+      user: jeff
+      pass: password
+      dbname: covid19
+      schema: public
+
+    prod:
+      type: redshift
+      method: iam
+      cluster_id: [cluster_id]
+      threads: [1 or more]
+      host: [host]
+      port: [port]
+      user: [prod_user]
+      dbname: [dbname]
+      schema: [prod_schema]
+
+  target: dev
+```
 
 Run:
 
@@ -25,8 +60,7 @@ make depend
 make
 ```
 
-You should end up with a SQLite database, `stage/covid19.db`, and files in
-the `data/` directory.
+You should end up with tables in the database and files in the `data/` directory.
 
 # Charts and Tables
 
