@@ -5,7 +5,7 @@ us_pop as (
     select sum(Population) as Population
     from {{ ref('dim_state') }}
     where 
-        StateAbbrev in (select state from fact_states)
+        StateAbbrev in (select state from {{ ref('fact_states') }})
 )
 ,base as (
     select

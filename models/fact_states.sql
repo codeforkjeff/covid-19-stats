@@ -18,7 +18,7 @@ WITH s AS (
         CAST(hospitalizedIncrease AS INT) AS hospitalizedIncrease,
         CAST(totalTestResultsIncrease AS INT) AS totalTestResultsIncrease,
         CAST(positiveIncrease AS REAL) / nullif(CAST(totalTestResultsIncrease AS REAL), 0) AS PositivityRate
-    from raw_covidtracking_states s
+    from {{ source('public', 'raw_covidtracking_states') }} s
 )
 ,two_week_increase as (
     select
