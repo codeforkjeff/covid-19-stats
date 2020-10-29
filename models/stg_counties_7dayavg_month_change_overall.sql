@@ -9,10 +9,10 @@
 SELECT
     t1.FIPS
     ,t2.Date
-    ,t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS MonthAvg7DayConfirmedIncrease
-    ,case when t1.Avg7DayConfirmedIncrease > 0 then (t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease end AS MonthAvg7DayConfirmedIncreasePct
-    ,t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS MonthAvg7DayDeathsIncrease
-    ,case when t1.Avg7DayDeathsIncrease > 0 then (t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease end AS MonthAvg7DayDeathsIncreasePct
+    ,CAST(t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease AS REAL) AS MonthAvg7DayConfirmedIncrease
+    ,CAST(case when t1.Avg7DayConfirmedIncrease > 0 then (t2.Avg7DayConfirmedIncrease - t1.Avg7DayConfirmedIncrease) / t1.Avg7DayConfirmedIncrease end AS REAL) AS MonthAvg7DayConfirmedIncreasePct
+    ,CAST(t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease AS REAL) AS MonthAvg7DayDeathsIncrease
+    ,CAST(case when t1.Avg7DayDeathsIncrease > 0 then (t2.Avg7DayDeathsIncrease - t1.Avg7DayDeathsIncrease) / t1.Avg7DayDeathsIncrease end AS REAL) AS MonthAvg7DayDeathsIncreasePct
 FROM {{ ref('fact_counties_base') }} t1
 JOIN {{ ref('fact_counties_base') }} t2
     ON t1.FIPS = t2.FIPS

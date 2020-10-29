@@ -9,8 +9,8 @@
 select
     fc1.fips,
     fc1.date,
-    sum(fc2.ConfirmedIncrease) / 7.0 as Avg7DayConfirmedIncrease, 
-    sum(fc2.DeathsIncrease) / 7.0 as Avg7DayDeathsIncrease
+    cast(sum(fc2.ConfirmedIncrease) / 7.0 as REAL) as Avg7DayConfirmedIncrease, 
+    cast(sum(fc2.DeathsIncrease) / 7.0 as REAL) as Avg7DayDeathsIncrease
 from {{ ref('stg_counties_base') }} fc1
 join {{ ref('dim_date') }} fc1_date
     ON fc1.date = fc1_date.date
