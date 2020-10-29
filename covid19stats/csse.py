@@ -108,10 +108,10 @@ def load_csse():
             Last_Update text,
             Lat text,
             Long_ text,
-            Confirmed int,
-            Deaths int,
-            Recovered int,
-            Active int,
+            Confirmed text,
+            Deaths text,
+            Recovered text,
+            Active text,
             Combined_Key text
             )
     ''')

@@ -36,10 +36,10 @@ SELECT
     Last_Update,
     Lat,
     Long_,
-    Confirmed,
-    Deaths,
-    Recovered,
-    Active,
+    CAST(CAST(Confirmed AS REAL) AS INT) AS Confirmed,
+    CAST(CAST(Deaths AS REAL) AS INT) AS Deaths,
+    CAST(CAST(Recovered AS REAL) AS INT) AS Recovered,
+    CAST(CAST(Active AS REAL) AS INT) AS Active,
     Combined_Key,
     ShouldHaveFIPS
 FROM t
