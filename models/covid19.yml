@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  # name has to be the postgres schema
+  - name: public
+    description: raw source data
+    tables:
+      - name: raw_covidtracking_states
+      - name: raw_nst_population
+      - name: raw_state_abbreviations
+      - name: final_cdc_deaths
+      - name: final_csse
