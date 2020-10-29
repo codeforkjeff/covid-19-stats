@@ -2,3 +2,5 @@ pandas==1.0.3
 jupyterlab==2.1.2
 seaborn==0.10.1
 psycopg2
+dbt==0.18.1 
+
