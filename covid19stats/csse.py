@@ -94,12 +94,12 @@ def load_csse():
     # c.execute("PRAGMA temp_store = MEMORY")
 
     c.execute('''
-        DROP TABLE IF EXISTS final_csse;
+        DROP TABLE IF EXISTS raw_csse;
     ''')
 
     # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE UNLOGGED TABLE final_csse (
+        CREATE UNLOGGED TABLE raw_csse (
             Date text,
             FIPS text,
             Admin2 text,
@@ -112,25 +112,24 @@ def load_csse():
             Deaths int,
             Recovered int,
             Active int,
-            Combined_Key text,
-            ShouldHaveFIPS int
+            Combined_Key text
             )
     ''')
 
     conn.commit()
 
-    #c.executemany('INSERT INTO final_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
-    #psycopg2.extras.execute_batch(c, 'INSERT INTO final_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
+    #c.executemany('INSERT INTO raw_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
+    #psycopg2.extras.execute_batch(c, 'INSERT INTO raw_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
 
     start_time = time.perf_counter()
 
     buf = io.StringIO()
     for row in all_rows:
-        buf.write("\t".join(row + ['0']))
+        buf.write("\t".join(row))
         buf.write("\n")
     buf.seek(0)
 
-    c.copy_from(buf, 'final_csse', sep="\t", null='',size=200000)
+    c.copy_from(buf, 'raw_csse', sep="\t", null='',size=200000)
 
     end_time = time.perf_counter()
     run_time = end_time - start_time
@@ -140,40 +139,11 @@ def load_csse():
 
     conn.commit()
 
-    c.execute('''
-        UPDATE final_csse
-        SET ShouldHaveFIPS = 1
-        WHERE
-            Country_Region = 'US'
-            AND coalesce(Admin2, '') <> 'Unassigned'
-            AND coalesce(Admin2, '') <> 'Unknown'
-            AND coalesce(Admin2, '') not like 'Out of%'
-            AND coalesce(Admin2, '') not like 'Out-of-%'
-            And Province_State <> 'Recovered'
-    ''')
-
-    # fix some FIPS codes that aren't properly zero-padded
-    c.execute('''
-        UPDATE final_csse
-        SET
-            FIPS = lpad(CAST(CAST(CAST(FIPS as FLOAT) as INT) as VARCHAR), 5, '0')
-        WHERE
-            ShouldHaveFIPS = 1
-            AND length(fips) <> 5
-            AND length(fips) > 0
-    ''')
-
-    c.execute('''
-        CREATE INDEX idx ON final_csse (FIPS);
-    ''')
-
-    conn.commit()
-
     # -- find rows that should havbe a fips code but doesn't.
     # -- I think these are actually okay to let by.
     #
     # select distinct combined_key
-    # from final_csse
+    # from raw_csse
     # where
     #     shouldhavefips = 1
     #     and (fips is null or length(fips) <> 5 or fips = '00000')

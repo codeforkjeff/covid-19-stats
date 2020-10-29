@@ -40,52 +40,6 @@ def load_cdc_deaths():
 
     load_tab_delim_file("input/cdc_deaths_2014_2018.txt", "raw_cdc_deaths_2014_2018")
 
-    ####
-
-    conn = get_db_conn()
-
-    c = conn.cursor()
-
-    c.execute('DROP TABLE IF EXISTS final_cdc_deaths')
-
-    c.execute('''
-        CREATE TABLE final_cdc_deaths (
-            State text,
-            Year int,
-            Week_Of_Year int,
-            Week_Ending_Date date,
-            All_Cause int
-        )
-    ''')
-
-    c.execute('''
-        INSERT INTO final_cdc_deaths
-        SELECT
-	    Jurisdiction_of_Occurrence,
-            cast(MMWR_Year as int),
-            cast(MMWR_Week as int),
-            to_date(Week_Ending_Date, 'YYYY-MM-DD') AS Week_Ending_Date,
-	    cast(All_Cause as int)
-        FROM raw_cdc_deaths_2019_2020;
-    ''')
-
-    c.execute('''
-        INSERT INTO final_cdc_deaths
-        SELECT
-	    Jurisdiction_of_Occurrence,
-            cast(MMWR_Year as int),
-            cast(MMWR_Week as int),
-            to_date(
-                right(Week_Ending_Date, 4) || '-' ||
-           	right(substr(Week_Ending_Date, 1, position('/' in Week_Ending_Date) - 1), 2) || '-' ||
-          	right(replace(substr(Week_Ending_Date, position('/' in Week_Ending_Date) + 1), '/2020', ''), 2)
-            ,'YYYY-MM-DD') AS Week_Ending_Date,
-	    cast(All__Cause as int)
-        FROM raw_cdc_deaths_2014_2018;
-    ''')
-
-    conn.commit()
-
     touch_file('stage/cdc_deaths.loaded')
 
 

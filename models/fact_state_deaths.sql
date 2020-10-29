@@ -2,7 +2,7 @@
 with end_dates as (
     Select distinct
         Week_Ending_Date AS end_date
-    FROM {{ source('public', 'final_cdc_deaths') }}
+    FROM {{ ref('final_cdc_deaths') }}
     WHERE
         Year = 2020
 ),
@@ -23,7 +23,7 @@ avg_by_week as (
         State,
         Week_Of_Year,
         avg(All_Cause) As AvgDeaths_2014_2019
-    from {{ source('public', 'final_cdc_deaths') }}
+    from {{ ref('final_cdc_deaths') }}
     where
         Year <= 2019
     group by
@@ -40,8 +40,8 @@ select
     coalesce(cd2.All_Cause,0) - coalesce(cd.All_Cause,0) AS Excess,
     cast(coalesce(cd2.All_Cause,0) - coalesce(cd.All_Cause,0) as float) / cd.All_Cause * 100.0 as Pct,
     d.Covid19DeathsForWeek
-from {{ source('public', 'final_cdc_deaths') }} cd
-join {{ source('public', 'final_cdc_deaths') }} cd2
+from {{ ref('final_cdc_deaths') }} cd
+join {{ ref('final_cdc_deaths') }} cd2
     ON cd.State = cd2.State
     AND cd.Year + 1 = cd2.Year
     AND cd.Week_Of_Year = cd2.Week_Of_Year

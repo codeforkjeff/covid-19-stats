@@ -7,7 +7,7 @@
 }}
 
 select FIPS
-from {{ source('public', 'final_csse') }}
+from {{ ref('final_csse') }}
 where
     Country_Region = 'US'
     AND FIPS <> '00078' -- duplicate for Virgin Islands
