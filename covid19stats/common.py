@@ -47,7 +47,11 @@ def row_to_dict(row):
 
 
 def get_db_conn():
-    conn = psycopg2.connect(database="covid19", host="localhost", user="jeff", password="zzz", port=5432)
+    host = os.environ['C19_DBHOST'] or 'localhost'
+    user = os.environ['C19_DBUSER'] or 'jeff'
+    password = os.environ['C19_DBPASSWORD'] or 'zzz'
+
+    conn = psycopg2.connect(database="covid19", host=host, user=user, password=password, port=5432)
     #conn = sqlite3.connect('stage/covid19.db')
     #conn.row_factory = sqlite3.Row
     return conn
