@@ -24,7 +24,7 @@ Clone the following repo in the same directory where you cloned this repo, to ge
 the data files:
 https://github.com/CSSEGISandData/COVID-19
 
-Create a `.dbt/profiles.yml` file if you don't already have one. Append the
+Create a `~/.dbt/profiles.yml` file if you don't already have one. Append the
 following to it:
 
 ```
