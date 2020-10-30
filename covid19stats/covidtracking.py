@@ -2,7 +2,7 @@
 import codecs
 import csv
 
-from .common import blanks_to_none, get_db_conn, timer, touch_file
+from .common import blanks_to_none, get_db_conn, fast_bulk_insert, timer, touch_file
 
 
 @timer
@@ -24,14 +24,15 @@ def load_covidtracking_states():
         DROP TABLE IF EXISTS raw_covidtracking_states;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_covidtracking_states ('''
+        CREATE UNLOGGED TABLE raw_covidtracking_states ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_covidtracking_states VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_covidtracking_states VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, 'raw_covidtracking_states')
 
     conn.commit()
 

@@ -3,3 +3,7 @@ reference/
 stage/
 __pycache__
 .ipynb_checkpoints/
+
+target/
+dbt_modules/
+logs/
