@@ -12,6 +12,11 @@ import shutil
 import sqlite3
 import time
 import urllib.request
+import yaml
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 import psycopg2
 
@@ -47,9 +52,15 @@ def row_to_dict(row):
 
 
 def get_db_conn():
-    host = os.environ['C19_DBHOST'] or 'localhost'
-    user = os.environ['C19_DBUSER'] or 'jeff'
-    password = os.environ['C19_DBPASSWORD'] or 'zzz'
+    path = os.path.expanduser("~/.dbt/profiles.yml")
+    if os.path.exists(path):
+        profiles = yaml.load(open(path).read(), Loader=Loader)
+        dev = profiles['covid19']['outputs']['dev']
+        host = dev['host']
+        user = dev['user']
+        password = dev['pass']
+    else:
+        raise Exception(f"{path} doesn't exist, can't get db connection params")
 
     conn = psycopg2.connect(database="covid19", host=host, user=user, password=password, port=5432)
     #conn = sqlite3.connect('stage/covid19.db')
