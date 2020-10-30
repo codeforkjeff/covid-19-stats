@@ -6,8 +6,20 @@ sources:
     description: raw source data
     tables:
       - name: raw_cdc_deaths_2014_2018
+        tags:
+          - "cdc_deaths"
       - name: raw_cdc_deaths_2019_2020
+        tags:
+          - "cdc_deaths"
       - name: raw_covidtracking_states
+        tags:
+          - "covidtracking"
       - name: raw_csse
+        tags:
+          - "csse"
       - name: raw_nst_population
+        tags:
+          - "reference_data"
       - name: raw_state_abbreviations
+        tags:
+          - "reference_data"

@@ -59,10 +59,14 @@ covid19:
 Run:
 
 ```
-# download/update data; re-run this daily to pick up new files from CSSE
-make depend
-# build database and output files
-make
+# download/update data; re-run this daily/periodically
+make extract
+# load source files into database tables
+make load
+# transforms
+make transform
+# create exports (files used by web pages)
+make export
 ```
 
 You should end up with tables in the database and files in the `data/` directory.
