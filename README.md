@@ -8,9 +8,14 @@ What's in this repo:
 - ELT for cleaning COVID-19 data from various sources and transforming it into dimensional models
 - provides web interfaces for viewing the data in various ways
 
-# How to Run This
+# How to Run This in Docker
 
-Install postgresql if you don't already have it running somewhere. Create a database
+There's some instructions and scripts for running this stuff in docker here:
+https://github.com/codeforkjeff/docker-covid-19-stats
+
+# How to Run This Otherwise
+
+Install PostgreSQL if you don't already have it running somewhere. Create a database
 and a user account that can access it.
 
 Set up a Python environment using `requirements.txt`
@@ -103,7 +108,7 @@ informative anymore. They're all on a single page, so it takes a while to load.
 
 # Working with the data
 
-Key tables in the SQLite database:
+Key tables in the database:
 
 `fact_counties_base` - a table containing daily snapshot info for each U.S.
 county. Key into the table is Date and FIPS code.
