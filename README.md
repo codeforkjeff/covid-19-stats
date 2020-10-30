@@ -8,13 +8,53 @@ What's in this repo:
 - ELT for cleaning COVID-19 data from various sources and transforming it into dimensional models
 - provides web interfaces for viewing the data in various ways
 
-# How to Run This
+# How to Run This in Docker
+
+There's some instructions and scripts for running this stuff in docker here:
+https://github.com/codeforkjeff/docker-covid-19-stats
+
+# How to Run This Otherwise
+
+Install PostgreSQL if you don't already have it running somewhere. Create a database
+and a user account that can access it.
 
 Set up a Python environment using `requirements.txt`
 
 Clone the following repo in the same directory where you cloned this repo, to get
 the data files:
 https://github.com/CSSEGISandData/COVID-19
+
+Create a `~/.dbt/profiles.yml` file if you don't already have one. Append the
+following to it:
+
+```
+covid19:
+  outputs:
+
+    dev:
+      # modify as needed
+      type: postgres
+      threads: 1
+      host: localhost
+      port: 5432
+      user: jeff
+      pass: password
+      dbname: covid19
+      schema: public
+
+    prod:
+      type: redshift
+      method: iam
+      cluster_id: [cluster_id]
+      threads: [1 or more]
+      host: [host]
+      port: [port]
+      user: [prod_user]
+      dbname: [dbname]
+      schema: [prod_schema]
+
+  target: dev
+```
 
 Run:
 
@@ -25,8 +65,7 @@ make depend
 make
 ```
 
-You should end up with a SQLite database, `stage/covid19.db`, and files in
-the `data/` directory.
+You should end up with tables in the database and files in the `data/` directory.
 
 # Charts and Tables
 
@@ -69,7 +108,7 @@ informative anymore. They're all on a single page, so it takes a while to load.
 
 # Working with the data
 
-Key tables in the SQLite database:
+Key tables in the database:
 
 `fact_counties_base` - a table containing daily snapshot info for each U.S.
 county. Key into the table is Date and FIPS code.

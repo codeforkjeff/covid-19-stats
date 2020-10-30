@@ -2,9 +2,13 @@
 import codecs
 import csv
 import glob
+import io
 import multiprocessing
 import os
 import os.path
+import time
+
+import psycopg2.extras
 
 from .common import get_db_conn, timer, touch_file, Path
 
@@ -51,6 +55,8 @@ def get_rows_from_csse_file(path):
 
                 row = [path.date] + reordered
 
+                #row = [None if val == '' else val for val in row]
+
                 result.append(row)
 
             first_row = False
@@ -81,19 +87,19 @@ def load_csse():
 
     c = conn.cursor()
 
-    #c.execute("PRAGMA synchronous=OFF")
-    c.execute("PRAGMA cache_size=10000000")
-    c.execute("PRAGMA journal_mode = OFF")
-    #c.execute("PRAGMA locking_mode = EXCLUSIVE")
-    c.execute("PRAGMA temp_store = MEMORY")
+    # #c.execute("PRAGMA synchronous=OFF")
+    # c.execute("PRAGMA cache_size=10000000")
+    # c.execute("PRAGMA journal_mode = OFF")
+    # #c.execute("PRAGMA locking_mode = EXCLUSIVE")
+    # c.execute("PRAGMA temp_store = MEMORY")
 
     c.execute('''
-        DROP TABLE IF EXISTS final_csse;
+        DROP TABLE IF EXISTS raw_csse;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE final_csse (
+        CREATE UNLOGGED TABLE raw_csse (
             Date text,
             FIPS text,
             Admin2 text,
@@ -102,47 +108,34 @@ def load_csse():
             Last_Update text,
             Lat text,
             Long_ text,
-            Confirmed int,
-            Deaths int,
-            Recovered int,
-            Active int,
-            Combined_Key text,
-            ShouldHaveFIPS int
+            Confirmed text,
+            Deaths text,
+            Recovered text,
+            Active text,
+            Combined_Key text
             )
     ''')
 
-    c.executemany('INSERT INTO final_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
-
     conn.commit()
 
-    c.execute('''
-        UPDATE final_csse
-        SET ShouldHaveFIPS = 1
-        WHERE
-            Country_Region = 'US'
-            AND Admin2 <> 'Unassigned'
-            AND Admin2 <> 'Unknown'
-            AND Admin2 not like 'Out of%'
-            AND Admin2 not like 'Out-of-%'
-            And Province_State <> 'Recovered'
-    ''')
+    #c.executemany('INSERT INTO raw_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
+    #psycopg2.extras.execute_batch(c, 'INSERT INTO raw_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
 
-    # fix some FIPS codes that aren't properly zero-padded
-    c.execute('''
-        UPDATE final_csse
-        SET
-            FIPS = substr('0000000000' ||
-                CASE WHEN FIPS LIKE '%.%' THEN substr(FIPS, 1, instr(FIPS, '.') - 1) ELSE FIPS END
-            , -5, 5)
-        WHERE
-            ShouldHaveFIPS = 1
-            AND length(fips) <> 5
-            AND length(fips) > 0
-    ''')
+    start_time = time.perf_counter()
 
-    c.execute('''
-        CREATE INDEX idx ON final_csse (FIPS);
-    ''')
+    buf = io.StringIO()
+    for row in all_rows:
+        buf.write("\t".join(row))
+        buf.write("\n")
+    buf.seek(0)
+
+    c.copy_from(buf, 'raw_csse', sep="\t", null='',size=200000)
+
+    end_time = time.perf_counter()
+    run_time = end_time - start_time
+    rate = len(all_rows) / run_time
+
+    print(f"copy_from took {run_time:.4f} secs ({rate:.4f} rows/s)")
 
     conn.commit()
 
@@ -150,7 +143,7 @@ def load_csse():
     # -- I think these are actually okay to let by.
     #
     # select distinct combined_key
-    # from final_csse
+    # from raw_csse
     # where
     #     shouldhavefips = 1
     #     and (fips is null or length(fips) <> 5 or fips = '00000')

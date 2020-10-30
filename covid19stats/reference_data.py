@@ -3,7 +3,7 @@ import codecs
 import csv
 import os.path
 
-from .common import get_db_conn, timer, touch_file
+from .common import get_db_conn, fast_bulk_insert, timer, touch_file
 
 
 @timer
@@ -27,21 +27,22 @@ def load_county_population(conn):
         DROP TABLE IF EXISTS raw_county_population;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_county_population ('''
+        CREATE UNLOGGED TABLE raw_county_population ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, 'raw_county_population')
 
     conn.commit()
 
     c.execute('DROP TABLE IF EXISTS final_fips_population')
 
     c.execute('''
-        CREATE TABLE final_fips_population
+        CREATE UNLOGGED TABLE final_fips_population
         AS SELECT
             STNAME,
             CTYNAME,
@@ -71,7 +72,7 @@ def load_county_population(conn):
     ''');
 
     c.execute('''
-        CREATE TABLE nyc_patch
+        CREATE UNLOGGED TABLE nyc_patch
         AS SELECT
             SUM(Population) as Population
         FROM final_fips_population
@@ -93,11 +94,10 @@ def load_county_population(conn):
     ''')
 
 
-    c.executescript('''
+    c.execute(('''
         DROP TABLE nyc_patch;
-
         CREATE INDEX idx_final_fips_population ON final_fips_population (FIPS);
-    ''')
+    '''))
 
     conn.commit()
 
@@ -127,14 +127,15 @@ def load_county_gazetteer(conn):
         DROP TABLE IF EXISTS raw_county_gazetteer;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_county_gazetteer ('''
+        CREATE UNLOGGED TABLE raw_county_gazetteer ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, 'raw_county_gazetteer')
 
 
 @timer
@@ -160,19 +161,20 @@ def load_county_acs_vars(conn):
         DROP TABLE IF EXISTS raw_county_acs;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_county_acs ('''
+        CREATE UNLOGGED TABLE raw_county_acs ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn,rows,'raw_county_acs')
 
-    c.executescript('''
+    c.execute('''
         DROP TABLE IF EXISTS final_county_acs;
 
-        CREATE TABLE final_county_acs AS
+        CREATE UNLOGGED TABLE final_county_acs AS
             SELECT
                 *
                 ,state || county AS state_and_county
@@ -206,20 +208,21 @@ def load_state_info(conn):
         DROP TABLE IF EXISTS raw_nst_population;
     ''')
 
-    # Create table
+    # CREATE UNLOGGED TABLE
     c.execute('''
-        CREATE TABLE raw_nst_population ('''
+        CREATE UNLOGGED TABLE raw_nst_population ('''
             + ",".join([col + " text" for col in column_names]) +
         ''')
     ''')
 
-    c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["?"] * len(column_names)) + ')', rows)
+    #c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
+    fast_bulk_insert(conn, rows, 'raw_nst_population')
 
     conn.commit()
 
     c.execute('DROP TABLE IF EXISTS raw_state_abbreviations')
 
-    c.execute('CREATE TABLE raw_state_abbreviations ( State text , Abbreviation text )')
+    c.execute('CREATE UNLOGGED TABLE raw_state_abbreviations ( State text , Abbreviation text )')
 
     c.execute('''
         INSERT INTO raw_state_abbreviations

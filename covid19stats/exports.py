@@ -5,6 +5,8 @@ import io
 import json
 import multiprocessing
 
+import psycopg2.extras
+
 from .common import get_db_conn, timer, row_to_dict
 
 
@@ -15,7 +17,7 @@ def export_counties_ranked():
 
     print("exporting output_counties_ranked")
 
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     c.executescript('''
         DROP VIEW IF EXISTS output_counties_ranked;
@@ -84,12 +86,12 @@ def export_counties_rate_of_change():
 
     print("exporting counties_rate_of_change")
 
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     c.execute('''
         SELECT
             t.FIPS,
-            Date,
+            to_char(Date, 'YYYY-MM-DD') AS Date,
             c.County,
             s.StateAbbrev as State,
             c.Lat,
@@ -129,8 +131,50 @@ def export_counties_rate_of_change():
 
     rows = c.fetchall()
 
+    # preserve camelcase
+
+    columns = [
+        'FIPS',
+        'Date',
+        'County',
+        'State',
+        'Lat',
+        'Long_',
+        'Confirmed',
+        'ConfirmedIncrease',
+        'ConfirmedIncreasePct',
+        'Avg7DayConfirmedIncrease',
+        'OneWeekConfirmedIncrease',
+        'OneWeekConfirmedIncreasePct',
+        'TwoWeekConfirmedIncrease',
+        'TwoWeekConfirmedIncreasePct',
+        'MonthConfirmedIncrease',
+        'MonthConfirmedIncreasePct',
+        'TwoWeekAvg7DayConfirmedIncrease',
+        'TwoWeekAvg7DayConfirmedIncreasePct',
+        'MonthAvg7DayConfirmedIncrease',
+        'MonthAvg7DayConfirmedIncreasePct',
+        'Deaths',
+        'DeathsIncrease',
+        'DeathsIncreasePct',
+        'MonthAvg7DayDeathsIncrease',
+        'MonthAvg7DayDeathsIncreasePct',
+        'Population',
+        'CasesPer100k',
+        'OneWeekCasesPer100kChange',
+        'OneWeekCasesPer100kChangePct'
+    ]
+
+    new_rows = []
+
+    for row in rows:
+        new_row = {}
+        for col in columns:
+            new_row[col] = row[col.lower()]
+        new_rows.append(new_row)
+
     with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
-        f.write(json.dumps([row_to_dict(row) for row in rows]))
+        f.write(json.dumps([row_to_dict(row) for row in new_rows]))
 
     conn.close()
 
@@ -142,7 +186,7 @@ def export_counties_7day_avg():
 
     print("exporting counties_7day_avg")
 
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     #### for sparklines
 
@@ -151,7 +195,7 @@ def export_counties_7day_avg():
             FIPS, Date, Avg7DayConfirmedIncrease, Avg7DayDeathsIncrease
         FROM fact_counties_base
         WHERE
-            Date >= date((SELECT MAX(date) FROM fact_counties_base), '-30 days')
+            Date >= (SELECT MAX(date) FROM fact_counties_base) - interval '30 days'
         ORDER BY date, FIPS;
     ''')
 
@@ -183,7 +227,7 @@ def export_counties_casesper100k():
 
     print("exporting counties_casesper100k")
 
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     #### for sparklines
 
@@ -192,7 +236,7 @@ def export_counties_casesper100k():
             FIPS, Date, CasesPer100k
         FROM fact_counties_progress
         WHERE
-            Date >= date((SELECT MAX(date) FROM fact_counties_progress), '-30 days')
+            Date >= (SELECT MAX(date) FROM fact_counties_progress) - interval '30 days'
         ORDER BY FIPS, date;
     ''')
 
@@ -218,7 +262,7 @@ def export_counties_casesper100k():
 def export_state_info():
     conn = get_db_conn()
 
-    c = conn.cursor()
+    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     c.execute('''
         SELECT *
