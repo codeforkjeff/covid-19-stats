@@ -28,7 +28,7 @@ SELECT
     DeathsIncreasePct,
     MonthAvg7DayDeathsIncrease,
     MonthAvg7DayDeathsIncreasePct,
-    DoublingTimeDays,
+--    DoublingTimeDays,
     CasesPer100k,
     t1.OneWeekCasesPer100kChange,
     t1.OneWeekCasesPer100kChangePct
