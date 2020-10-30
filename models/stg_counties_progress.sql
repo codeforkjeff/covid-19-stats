@@ -28,7 +28,7 @@ SELECT
     CAST(t.DeathsIncrease as REAL) / nullif(t.Deaths - t.DeathsIncrease, 0) AS DeathsIncreasePct,
     MonthAvg7DayDeathsIncrease,
     MonthAvg7DayDeathsIncreasePct,
-    DoublingTimeDays,
+{#    DoublingTimeDays, #}
     greatest(coalesce(coalesce(TwoWeekConfirmedIncrease, 0) * cast(100000 as real) / nullif(c.Population, 0), 0), 0) as CasesPer100k
     --coalesce(Avg7DayConfirmedIncrease, 0) * cast(100000 as real) / nullif(c.Population, 0) as CasesPer100k2,
 FROM {{ ref('fact_counties_base') }} t
@@ -44,5 +44,7 @@ LEFT JOIN {{ ref('stg_counties_two_week_change') }} two
     ON t.FIPS = two.FIPS AND t.Date = two.Date
 LEFT JOIN {{ ref('stg_counties_month_change') }} mon
     ON t.FIPS = mon.FIPS AND t.Date = mon.Date
+{#
 LEFT JOIN {{ ref('stg_counties_doubling_time') }} doub
     ON t.FIPS = doub.FIPS AND t.Date = doub.Date
+#}
