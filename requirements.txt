@@ -3,4 +3,4 @@ jupyterlab==2.1.2
 seaborn==0.10.1
 psycopg2
 dbt==0.18.1 
-
+pyyaml==5.3.1
