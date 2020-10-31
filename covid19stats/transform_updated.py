@@ -30,7 +30,7 @@ def transform_updated():
             models.append(tag)
 
     if len(models)> 0:
-        cmd = "dbt run --models " + " ".join(["tag:" + model + "+" for model in models])
+        cmd = "dbt run --models " + " ".join(["@tag:" + model for model in models])
         print(f"Runnning: {cmd}")
         subprocess.run(shlex.split(cmd), check=True)
 
