@@ -34,6 +34,23 @@ WITH s AS (
         ON two_weeks_ago.State = s.State
         AND two_weeks_ago.Date = s_date.Minus14Days
 )
+,two_week_avg as (
+    select
+        s1.state,
+        s1.date,
+        cast(sum(s2.positiveIncrease) / 7.0 as REAL) as Avg7DayPositiveIncrease, 
+        cast(sum(s2.DeathIncrease) / 7.0 as REAL) as Avg7DayDeathIncrease
+    from s s1
+    join {{ ref('dim_date') }} s1_date
+        ON s1.date = s1_date.date
+    join s s2
+        ON s1.state = s2.state
+        AND s2.date > s1_date.Minus7Days
+        AND s2.date <= s1.date
+    GROUP BY
+        s1.state,
+        s1.date
+)
 SELECT
     s.Date,
     s.state,
@@ -45,8 +62,13 @@ SELECT
     hospitalizedIncrease,
     totalTestResultsIncrease,
     PositivityRate,
-    CasesPer100k
+    CasesPer100k,
+    Avg7DayPositiveIncrease,
+    Avg7DayDeathIncrease
 FROM s
 LEFT JOIN two_week_increase
     ON two_week_increase.state = s.state
     AND two_week_increase.Date = s.Date
+LEFT JOIN two_week_avg
+    ON two_week_avg.state = s.state
+    AND two_week_avg.Date = s.Date
