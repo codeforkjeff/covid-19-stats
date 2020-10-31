@@ -39,68 +39,6 @@ def load_county_population(conn):
 
     conn.commit()
 
-    c.execute('DROP TABLE IF EXISTS final_fips_population')
-
-    c.execute('''
-        CREATE UNLOGGED TABLE final_fips_population
-        AS SELECT
-            STNAME,
-            CTYNAME,
-            STATE || COUNTY AS FIPS,
-            CAST(POPESTIMATE2019 as INT) as Population
-        FROM raw_county_population;
-    ''')
-
-    # Patch Puerto Rico
-    c.execute('''
-        INSERT INTO final_fips_population
-        SELECT
-            NAME, 
-            NAME,
-            '00072',
-            CAST(POPESTIMATE2019 as INT) as Population
-        FROM raw_nst_population
-        WHERE NAME = 'Puerto Rico'
-    ''')
-
-    # Patch NYC: CSSE aggregates all 5 counties of NYC. Reusing code 36061
-    # is misleading, IMO, but that's how it is. so we patch our pop count
-    # to follow suit
-
-    c.execute('''
-        DROP TABLE IF EXISTS nyc_patch
-    ''');
-
-    c.execute('''
-        CREATE UNLOGGED TABLE nyc_patch
-        AS SELECT
-            SUM(Population) as Population
-        FROM final_fips_population
-        WHERE FIPS IN (
-            '36061', -- New York County
-            '36005', -- Bronx County
-            '36047', -- Kings County
-            '36081', -- Queens County
-            '36085' -- Richmond County
-        ) 
-    ''')
-
-    c.execute('''
-        UPDATE final_fips_population
-        SET
-            Population = (SELECT Population from nyc_patch)
-        WHERE
-            FIPS = '36061'
-    ''')
-
-
-    c.execute(('''
-        DROP TABLE nyc_patch;
-        CREATE INDEX idx_final_fips_population ON final_fips_population (FIPS);
-    '''))
-
-    conn.commit()
-
     c.close()
 
 
@@ -170,18 +108,6 @@ def load_county_acs_vars(conn):
 
     #c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
     fast_bulk_insert(conn,rows,'raw_county_acs')
-
-    c.execute('''
-        DROP TABLE IF EXISTS final_county_acs;
-
-        CREATE UNLOGGED TABLE final_county_acs AS
-            SELECT
-                *
-                ,state || county AS state_and_county
-            FROM raw_county_acs;
-
-        CREATE INDEX idx_final_county_acs ON final_county_acs (state_and_county)
-    ''')
 
     conn.commit()
 

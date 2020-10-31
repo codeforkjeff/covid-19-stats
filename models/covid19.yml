@@ -17,6 +17,12 @@ sources:
       - name: raw_csse
         tags:
           - "csse"
+      - name: raw_county_acs
+        tags:
+          - "reference_data"
+      - name: raw_county_population
+        tags:
+          - "reference_data"
       - name: raw_nst_population
         tags:
           - "reference_data"
