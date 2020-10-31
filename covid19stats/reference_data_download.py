@@ -46,7 +46,7 @@ def download_county_acs_vars():
 
     updated = download_and_update( \
         "https://api.census.gov/data/2018/acs/acs5/cprofile?get=GEO_ID,CP03_2014_2018_062E,CP05_2014_2018_018E&for=county:*", \
-        "reference/county_acs_2018.csv", \
+        "reference/county_acs_2018.json", \
         threshold=threshold)
 
 
