@@ -1,13 +1,16 @@
 
 # python >= 3.7.4
 
+import codecs
 from collections import namedtuple
+import csv
 import functools
 import hashlib
 import io
 import os
 import os.path
 import pathlib
+import re
 import shutil
 import sqlite3
 import time
@@ -134,3 +137,32 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
 
     return replace
 
+
+def clean_column_name(name):
+    return re.sub(r"[^a-zA-Z0-9]", "_", name.strip())
+
+
+def load_flat_file(path, conn, table_name, delimiter=",", encoding='utf-8'):
+
+    with codecs.open(path, encoding=encoding) as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        rows = [blanks_to_none(row) for row in reader]
+        column_names = [clean_column_name(name) for name in rows[0]]
+        rows = rows[1:]
+
+    load_table(conn, table_name, column_names, rows)
+
+
+def load_table(conn, table_name, column_names, rows, drop_if_exists=True):
+
+    c = conn.cursor()
+
+    if drop_if_exists:
+        c.execute(f"DROP TABLE IF EXISTS {table_name};")
+
+    # Create table
+    c.execute(f"CREATE TABLE {table_name} (" + ",".join([col + " text" for col in column_names]) + ")")
+
+    fast_bulk_insert(conn, rows, table_name)
+
+    conn.commit()

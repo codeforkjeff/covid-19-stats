@@ -3,43 +3,13 @@ import codecs
 import csv
 import os.path
 
-from .common import get_db_conn, fast_bulk_insert, timer, touch_file
+from .common import get_db_conn, timer, touch_file, load_flat_file, load_table
 
 
 @timer
 def load_county_population(conn):
 
-    path = "reference/co-est2019-alldata.csv"
-
-    print("Loading county data into database")
-
-    column_names = []
-
-    with codecs.open(path, encoding='latin1') as f:
-        reader = csv.reader(f)
-        rows = [row for row in reader]
-        column_names = rows[0]
-        rows = rows[1:]
-
-    c = conn.cursor()
-
-    c.execute('''
-        DROP TABLE IF EXISTS raw_county_population;
-    ''')
-
-    # CREATE UNLOGGED TABLE
-    c.execute('''
-        CREATE UNLOGGED TABLE raw_county_population ('''
-            + ",".join([col + " text" for col in column_names]) +
-        ''')
-    ''')
-
-    #c.executemany('INSERT INTO raw_county_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
-    fast_bulk_insert(conn, rows, 'raw_county_population')
-
-    conn.commit()
-
-    c.close()
+    load_flat_file("reference/co-est2019-alldata.csv", conn, 'raw_county_population', encoding='latin1')
 
 
 @timer
@@ -51,29 +21,7 @@ def load_county_gazetteer(conn):
 
     # https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html
 
-    path = "reference/2019_Gaz_counties_national.txt"
-
-    with codecs.open(path, encoding='utf8') as f:
-        reader = csv.reader(f, delimiter="\t")
-        rows = [row for row in reader]
-        column_names = [name.strip() for name in rows[0]]
-        rows = rows[1:]
-
-    c = conn.cursor()
-
-    c.execute('''
-        DROP TABLE IF EXISTS raw_county_gazetteer;
-    ''')
-
-    # CREATE UNLOGGED TABLE
-    c.execute('''
-        CREATE UNLOGGED TABLE raw_county_gazetteer ('''
-            + ",".join([col + " text" for col in column_names]) +
-        ''')
-    ''')
-
-    #c.executemany('INSERT INTO raw_county_gazetteer VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
-    fast_bulk_insert(conn, rows, 'raw_county_gazetteer')
+    load_flat_file("reference/2019_Gaz_counties_national.txt", conn, 'raw_county_gazetteer', delimiter="\t")
 
 
 @timer
@@ -82,7 +30,7 @@ def load_county_acs_vars(conn):
 
     # https://api.census.gov/data/2018/acs/acs5/cprofile/variables.html
 
-    path = "reference/county_acs_2018.csv"
+    path = "reference/county_acs_2018.json"
 
     print("Loading county vars into database")
 
@@ -93,128 +41,12 @@ def load_county_acs_vars(conn):
         column_names = rows[0]
         rows = rows[1:]
 
-    c = conn.cursor()
-
-    c.execute('''
-        DROP TABLE IF EXISTS raw_county_acs;
-    ''')
-
-    # CREATE UNLOGGED TABLE
-    c.execute('''
-        CREATE UNLOGGED TABLE raw_county_acs ('''
-            + ",".join([col + " text" for col in column_names]) +
-        ''')
-    ''')
-
-    #c.executemany('INSERT INTO raw_county_acs VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
-    fast_bulk_insert(conn,rows,'raw_county_acs')
-
-    conn.commit()
-
-    c.close()
+    load_table(conn, 'raw_county_acs', column_names, rows)
 
 
 def load_state_info(conn):
 
-    path = "reference/nst-est2019-alldata.csv"
-
-    print("Loading state data into database")
-
-    column_names = []
-
-    with codecs.open(path, encoding='latin1') as f:
-        reader = csv.reader(f)
-        rows = [row for row in reader]
-        column_names = rows[0]
-        rows = rows[1:]
-
-    c = conn.cursor()
-
-    c.execute('''
-        DROP TABLE IF EXISTS raw_nst_population;
-    ''')
-
-    # CREATE UNLOGGED TABLE
-    c.execute('''
-        CREATE UNLOGGED TABLE raw_nst_population ('''
-            + ",".join([col + " text" for col in column_names]) +
-        ''')
-    ''')
-
-    #c.executemany('INSERT INTO raw_nst_population VALUES (' + ",".join(["%s"] * len(column_names)) + ')', rows)
-    fast_bulk_insert(conn, rows, 'raw_nst_population')
-
-    conn.commit()
-
-    c.execute('DROP TABLE IF EXISTS raw_state_abbreviations')
-
-    c.execute('CREATE UNLOGGED TABLE raw_state_abbreviations ( State text , Abbreviation text )')
-
-    c.execute('''
-        INSERT INTO raw_state_abbreviations
-        SELECT *
-        FROM
-        (
-        VALUES
-            ('Alabama', 'AL'),
-            ('Alaska', 'AK'),
-            ('Arizona', 'AZ'),
-            ('Arkansas', 'AR'),
-            ('California', 'CA'),
-            ('Colorado', 'CO'),
-            ('Connecticut', 'CT'),
-            ('Delaware', 'DE'),
-            ('District of Columbia', 'DC'),
-            ('Florida', 'FL'),
-            ('Georgia', 'GA'),
-            ('Hawaii', 'HI'),
-            ('Idaho', 'ID'),
-            ('Illinois', 'IL'),
-            ('Indiana', 'IN'),
-            ('Iowa', 'IA'),
-            ('Kansas', 'KS'),
-            ('Kentucky', 'KY'),
-            ('Louisiana', 'LA'),
-            ('Maine', 'ME'),
-            ('Maryland', 'MD'),
-            ('Massachusetts', 'MA'),
-            ('Michigan', 'MI'),
-            ('Minnesota', 'MN'),
-            ('Mississippi', 'MS'),
-            ('Missouri', 'MO'),
-            ('Montana', 'MT'),
-            ('Nebraska', 'NE'),
-            ('Nevada', 'NV'),
-            ('New Hampshire', 'NH'),
-            ('New Jersey', 'NJ'),
-            ('New Mexico', 'NM'),
-            ('New York', 'NY'),
-            ('North Carolina', 'NC'),
-            ('North Dakota', 'ND'),
-            ('Ohio', 'OH'),
-            ('Oklahoma', 'OK'),
-            ('Oregon', 'OR'),
-            ('Pennsylvania', 'PA'),
-            ('Rhode Island', 'RI'),
-            ('South Carolina', 'SC'),
-            ('South Dakota', 'SD'),
-            ('Tennessee', 'TN'),
-            ('Texas', 'TX'),
-            ('Utah', 'UT'),
-            ('Vermont', 'VT'),
-            ('Virginia', 'VA'),
-            ('Washington', 'WA'),
-            ('West Virginia', 'WV'),
-            ('Wisconsin', 'WI'),
-            ('Wyoming', 'WY')
-        ) AS t;
-    ''')
-
-    c.execute('CREATE INDEX idx_raw_state_abbreviations ON raw_state_abbreviations (State)')
-
-    conn.commit()
-
-    c.close()
+    load_flat_file("reference/nst-est2019-alldata.csv", conn, 'raw_nst_population', encoding='latin1')
 
 
 def load_reference_data():

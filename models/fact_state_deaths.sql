@@ -48,7 +48,7 @@ join {{ ref('final_cdc_deaths') }} cd2
 left join avg_by_week a
     on cd.State = a.State
     and cd.Week_Of_Year = a.Week_Of_year
-left join raw_state_abbreviations rsa
+left join {{ ref('final_state_abbreviations') }} rsa
     on cd.State = rsa.State
 left join covid19deaths d
     on rsa.Abbreviation = d.state
