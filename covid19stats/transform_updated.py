@@ -31,7 +31,7 @@ def transform_updated():
 
     if len(models)> 0:
         cmd = "dbt run --models " + " ".join(["@tag:" + model for model in models])
-        print(f"Runnning: {cmd}")
+        print(f"Runnning: {cmd}", flush=True)
         subprocess.run(shlex.split(cmd), check=True)
 
         pathlib.Path(update_file).touch()
