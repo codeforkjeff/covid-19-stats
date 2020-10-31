@@ -47,7 +47,7 @@ stage/covidtracking.loaded: input/covidtracking_states.csv
 
 transform:
 
-	python -m covid19stats.transform_updated
+	python3 -m covid19stats.transform_updated
 
 export: \
 	$(modules) covid19stats/exports.py
