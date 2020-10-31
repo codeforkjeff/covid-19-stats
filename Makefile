@@ -1,6 +1,7 @@
 # 
 # we use stage/*.loaded targets to trigger reloading data into the database
 # when a dataset needs to be refreshed.
+# TODO: this doesn't work if a source table got dropped somehow and needs to be reloaded.
 
 SHELL := /bin/bash
 

@@ -11,9 +11,8 @@ update_file = "stage/transforms.updated"
 
 def transform_updated():
     """
-    figures out which source tables have changed since last transform.
-    prints to stdout a space-separated list of dbt node selection expressions,
-    which should get passed as args to 'dbt run --models'
+    figures out which source tables have changed since last transform
+    and passes them to 'dbt run --models'
     """
     last_transformed = 0
 
