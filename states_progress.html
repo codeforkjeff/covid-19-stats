@@ -130,7 +130,7 @@
             function moving(window_size, data, calc_fn) {
               var sliced = lastN(data, 14 + window_size);
               var output = [];
-              for(var i = sliced.length - 14; i < sliced.length; i++) {
+              for(var i = sliced.length - 14; i <= sliced.length; i++) {
                 var window_data = sliced.slice(i - window_size, i);
                 var avg = window_data.reduce((acc, item) => acc + calc_fn(item), 0) / window_size;
                 output.push(avg);
