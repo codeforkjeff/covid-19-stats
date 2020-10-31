@@ -23,8 +23,8 @@ SELECT DISTINCT
     CAST(CP03_2014_2018_062E as integer) AS MedianIncome,
     cast(CP05_2014_2018_018E as float) AS MedianAge
 FROM MostRecent t1
-LEFT JOIN final_fips_population t2
+LEFT JOIN {{ ref('final_fips_population') }} t2
     ON t1.FIPS = t2.FIPS
-LEFT JOIN final_county_acs t3
+LEFT JOIN {{ ref('final_county_acs') }} t3
     ON t1.FIPS = t3.state_and_county
 WHERE t1.DateRank = 1
