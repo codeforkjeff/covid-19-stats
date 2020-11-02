@@ -1,8 +1,7 @@
 
 {{
   config({
-    "pre-hook": 'drop index if exists idx_{{ this.table }}',
-    "post-hook": 'create index if not exists idx_{{ this.table }} on {{ this }} (FIPS, Date, Confirmed, Deaths)'
+    "materialized": 'view'
     })
 }}
 

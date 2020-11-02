@@ -1,30 +1,23 @@
-{{
-  config({
-    "pre-hook": 'drop index if exists idx_{{ this.table }}',
-    "post-hook": 'create unique index if not exists idx_{{ this.table }} on {{ this }} (state, Date)'
-    })
-}}
 
 WITH s AS (
     select
-        --date(substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2)) AS Date,
-        to_date(Date, 'YYYYMMDD') AS Date,
+        cast(substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2) AS DATE) AS Date,
         state,
-        CAST(positive AS INT) AS positive,
-        CASE WHEN CAST(positiveIncrease AS INT) < 0 THEN 0 ELSE CAST(positiveIncrease AS INT) END AS positiveIncrease,
-        CAST(death AS INT) AS death,
-        CAST(deathIncrease AS INT) AS deathIncrease,
-        CAST(hospitalized AS INT) AS hospitalized,
-        CAST(hospitalizedIncrease AS INT) AS hospitalizedIncrease,
-        CAST(totalTestResultsIncrease AS INT) AS totalTestResultsIncrease,
-        CAST(positiveIncrease AS REAL) / nullif(CAST(totalTestResultsIncrease AS REAL), 0) AS PositivityRate
+        CAST(positive AS INT64) AS positive,
+        CASE WHEN CAST(positiveIncrease AS INT64) < 0 THEN 0 ELSE CAST(positiveIncrease AS INT64) END AS positiveIncrease,
+        CAST(death AS INT64) AS death,
+        CAST(deathIncrease AS INT64) AS deathIncrease,
+        CAST(hospitalized AS INT64) AS hospitalized,
+        CAST(hospitalizedIncrease AS INT64) AS hospitalizedIncrease,
+        CAST(totalTestResultsIncrease AS INT64) AS totalTestResultsIncrease,
+        CAST(positiveIncrease AS FLOAT64) / nullif(CAST(totalTestResultsIncrease AS FLOAT64), 0) AS PositivityRate
     from {{ source('public', 'raw_covidtracking_states') }} s
 )
 ,two_week_increase as (
     select
         s.date,
         s.State,
-        cast((s.positive - two_weeks_ago.positive) AS REAL) * 100000 / nullif(Population,0) AS CasesPer100k
+        cast((s.positive - two_weeks_ago.positive) AS FLOAT64) * 100000 / nullif(Population,0) AS CasesPer100k
     from s
     join {{ ref('dim_date') }} s_date
         ON s.date = s_date.date
@@ -38,8 +31,8 @@ WITH s AS (
     select
         s1.state,
         s1.date,
-        cast(sum(s2.positiveIncrease) / 7.0 as REAL) as Avg7DayPositiveIncrease, 
-        cast(sum(s2.DeathIncrease) / 7.0 as REAL) as Avg7DayDeathIncrease
+        cast(sum(s2.positiveIncrease) / 7.0 as FLOAT64) as Avg7DayPositiveIncrease, 
+        cast(sum(s2.DeathIncrease) / 7.0 as FLOAT64) as Avg7DayDeathIncrease
     from s s1
     join {{ ref('dim_date') }} s1_date
         ON s1.date = s1_date.date

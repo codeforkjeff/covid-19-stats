@@ -1,7 +1,7 @@
+
 {{
   config({
-    "pre-hook": 'drop index if exists idx_{{ this.table }}',
-    "post-hook": 'create index if not exists idx_{{ this.table }} on {{ this }} (FIPS,Date)'
+    "materialized": 'view'
     })
 }}
 
@@ -11,8 +11,7 @@
 -- for simplicity, just pick the row with higher numbers
 
 SELECT
-    to_date(Date, 'YYYYMMDD') AS Date,
-    --substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2)
+    cast(substr(Date,1,4) || '-' || substr(Date,5,2) ||  '-' || substr(Date,7,2) as DATE) as Date,
     FIPS,
     Admin2,
     Province_State,

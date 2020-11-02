@@ -1,8 +1,7 @@
 
 {{
   config({
-    "pre-hook": 'drop index if exists idx_{{ this.table }}',
-    "post-hook": 'create unique index if not exists idx_{{ this.table }} on {{ this }} (FIPS, Date)'
+    "materialized": 'view'
     })
 }}
 
@@ -11,7 +10,7 @@ SELECT
     t.Date,
     t.Confirmed,
     t.ConfirmedIncrease,
-    CAST(t.ConfirmedIncrease as REAL) / nullif(t.Confirmed - t.ConfirmedIncrease, 0) AS ConfirmedIncreasePct,
+    CAST(t.ConfirmedIncrease as FLOAT64) / nullif(t.Confirmed - t.ConfirmedIncrease, 0) AS ConfirmedIncreasePct,
     Avg7DayConfirmedIncrease,
     coalesce(OneWeekConfirmedIncrease, 0) AS OneWeekConfirmedIncrease,
     coalesce(OneWeekConfirmedIncreasePct, 0) AS OneWeekConfirmedIncreasePct,
@@ -25,11 +24,11 @@ SELECT
     coalesce(MonthAvg7DayConfirmedIncreasePct, 0) AS MonthAvg7DayConfirmedIncreasePct,
     t.Deaths,
     t.DeathsIncrease,
-    CAST(t.DeathsIncrease as REAL) / nullif(t.Deaths - t.DeathsIncrease, 0) AS DeathsIncreasePct,
+    CAST(t.DeathsIncrease as FLOAT64) / nullif(t.Deaths - t.DeathsIncrease, 0) AS DeathsIncreasePct,
     MonthAvg7DayDeathsIncrease,
     MonthAvg7DayDeathsIncreasePct,
 {#    DoublingTimeDays, #}
-    greatest(coalesce(coalesce(TwoWeekConfirmedIncrease, 0) * cast(100000 as real) / nullif(c.Population, 0), 0), 0) as CasesPer100k
+    greatest(coalesce(coalesce(TwoWeekConfirmedIncrease, 0) * cast(100000 as FLOAT64) / nullif(c.Population, 0), 0), 0) as CasesPer100k
     --coalesce(Avg7DayConfirmedIncrease, 0) * cast(100000 as real) / nullif(c.Population, 0) as CasesPer100k2,
 FROM {{ ref('fact_counties_base') }} t
 JOIN {{ ref('dim_county') }} c
