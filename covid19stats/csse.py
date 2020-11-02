@@ -10,7 +10,7 @@ import time
 
 import psycopg2.extras
 
-from .common import get_db_conn, timer, touch_file, Path
+from .common import get_db_conn, timer, touch_file, Path, bq_load_flat_file
 
 
 ordered_fields = [
@@ -129,7 +129,12 @@ def load_csse():
         buf.write("\n")
     buf.seek(0)
 
-    c.copy_from(buf, 'raw_csse', sep="\t", null='',size=200000)
+    with codecs.open("stage/raw_csse.txt", "w", encoding='utf-8') as f:
+        f.write("\t".join(['Date']+ordered_fields))
+        f.write("\n")
+        f.write(buf.getvalue())
+
+    bq_load_flat_file("stage/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
     end_time = time.perf_counter()
     run_time = end_time - start_time

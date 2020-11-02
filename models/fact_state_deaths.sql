@@ -15,7 +15,7 @@ covid19deaths as (
     cross join end_dates
     WHERE
         DATE <= end_date
-        AND DATE >= end_date - interval '6 days'
+        AND DATE >= DATE_SUB(end_date, interval 6 day)
     group by state, end_date
 ),
 avg_by_week as (
@@ -38,7 +38,7 @@ select
     cd.All_Cause as Deaths2019,
     cd2.All_Cause as Deaths2020,
     coalesce(cd2.All_Cause,0) - coalesce(cd.All_Cause,0) AS Excess,
-    cast(coalesce(cd2.All_Cause,0) - coalesce(cd.All_Cause,0) as float) / cd.All_Cause * 100.0 as Pct,
+    cast(coalesce(cd2.All_Cause,0) - coalesce(cd.All_Cause,0) as float64) / cd.All_Cause * 100.0 as Pct,
     d.Covid19DeathsForWeek
 from {{ ref('final_cdc_deaths') }} cd
 join {{ ref('final_cdc_deaths') }} cd2

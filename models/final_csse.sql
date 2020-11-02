@@ -1,11 +1,4 @@
 
-{{
-  config({
-    "pre-hook": 'drop index if exists idx_{{ this.table }}',
-    "post-hook": 'create index if not exists idx_{{ this.table }} on {{ this }} (FIPS)'
-    })
-}}
-
 WITH t as (
 
 SELECT
@@ -27,7 +20,7 @@ SELECT
         ShouldHaveFIPS = 1
         AND length(fips) <> 5
         AND length(fips) > 0
-    THEN lpad(CAST(CAST(CAST(FIPS as FLOAT) as INT) as VARCHAR), 5, '0')
+    THEN lpad(CAST(CAST(CAST(FIPS as FLOAT64) as INT64) as STRING), 5, '0')
     ELSE FIPS
     END AS FIPS,
     Admin2,
@@ -36,10 +29,10 @@ SELECT
     Last_Update,
     Lat,
     Long_,
-    CAST(CAST(Confirmed AS REAL) AS INT) AS Confirmed,
-    CAST(CAST(Deaths AS REAL) AS INT) AS Deaths,
-    CAST(CAST(Recovered AS REAL) AS INT) AS Recovered,
-    CAST(CAST(Active AS REAL) AS INT) AS Active,
+    CAST(CAST(Confirmed AS FLOAT64) AS INT64) AS Confirmed,
+    CAST(CAST(Deaths AS FLOAT64) AS INT64) AS Deaths,
+    CAST(CAST(Recovered AS FLOAT64) AS INT64) AS Recovered,
+    CAST(CAST(Active AS FLOAT64) AS INT64) AS Active,
     Combined_Key,
     ShouldHaveFIPS
 FROM t

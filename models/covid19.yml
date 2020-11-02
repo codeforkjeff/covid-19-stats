@@ -4,6 +4,7 @@ sources:
   # name has to be the postgres schema
   - name: public
     description: raw source data
+    schema: source_tables.
     tables:
       - name: raw_cdc_deaths_2014_2018
         tags:
@@ -21,6 +22,9 @@ sources:
         tags:
           - "reference_data"
       - name: raw_county_population
+        tags:
+          - "reference_data"
+      - name: raw_date
         tags:
           - "reference_data"
       - name: raw_nst_population

@@ -11,8 +11,10 @@ import os
 import os.path
 import pathlib
 import re
+import shlex
 import shutil
 import sqlite3
+import subprocess
 import time
 import urllib.request
 import yaml
@@ -166,3 +168,30 @@ def load_table(conn, table_name, column_names, rows, drop_if_exists=True):
     fast_bulk_insert(conn, rows, table_name)
 
     conn.commit()
+
+bq_path = "/opt/google-cloud-sdk/bin/bq"
+bq_global_opts = "--project_id covid-19-stats-294405"
+
+
+def bq_load_flat_file(path, table_name, delimiter=",", encoding='utf-8'):
+
+    cmd = f"{bq_path} {bq_global_opts} rm -f {table_name}"
+    print(f"Runnning: {cmd}", flush=True)
+    subprocess.run(shlex.split(cmd), check=True)
+
+    with codecs.open(path, encoding=encoding) as f:
+        headers = f.readline().strip()
+        if delimiter != ',':
+            headers = ",".join(clean_column_name(name) for name in headers.split(delimiter))
+
+    cmd = f"{bq_path} {bq_global_opts} mk {table_name} {headers}"
+    print(f"Runnning: {cmd}", flush=True)
+    subprocess.run(shlex.split(cmd), check=True)
+
+    load_opts = ''
+    if delimiter != ',':
+        load_opts = '-F ' + ('tab' if delimiter == "\t" else delimiter)
+
+    cmd = f"{bq_path} {bq_global_opts} load --skip_leading_rows=1 {load_opts} {table_name} {path}"
+    print(f"Runnning: {cmd}", flush=True)
+    subprocess.run(shlex.split(cmd), check=True)

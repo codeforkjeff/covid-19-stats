@@ -7,7 +7,7 @@ version: '1.0.0'
 config-version: 2
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'covid19'
+profile: 'covid19_bigquery'
 
 # These configurations specify where dbt should look for different types of files.
 # The `source-paths` config, for example, states that models in this project can be
@@ -34,3 +34,5 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   covid_19_stats:
     materialized: table
+    stg_counties_doubling_time:
+      enabled: false
