@@ -1,6 +1,12 @@
-pandas==1.0.3
-jupyterlab==2.1.2
-seaborn==0.10.1
+pandas==1.1.4
+jupyterlab==2.2.9
+seaborn==0.11.0
 psycopg2
 dbt==0.18.1 
 pyyaml==5.3.1
+
+# these are transitive dependencies that resolve conflicts
+# among the above. I had to resolve these by hand.
+requests==2.23.0
+jsonschema==3.1.1
+idna==2.9
