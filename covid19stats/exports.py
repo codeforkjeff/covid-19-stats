@@ -5,9 +5,9 @@ import io
 import json
 import multiprocessing
 
-import psycopg2.extras
+from google.cloud import bigquery
 
-from .common import get_db_conn, timer, row_to_dict
+from .common import get_db_conn, timer, row_to_dict, get_bq_client
 
 
 @timer
@@ -82,16 +82,14 @@ def export_counties_ranked():
 @timer
 def export_counties_rate_of_change():
 
-    conn = get_db_conn()
+    client = get_bq_client()
 
     print("exporting counties_rate_of_change")
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    c.execute('''
+    query_job = client.query('''
         SELECT
             t.FIPS,
-            to_char(Date, 'YYYY-MM-DD') AS Date,
+            FORMAT_DATE("%F", Date) AS Date,
             c.County,
             s.StateAbbrev as State,
             c.Lat,
@@ -129,7 +127,7 @@ def export_counties_rate_of_change():
         ORDER BY t.FIPS, Date;
     ''')
 
-    rows = c.fetchall()
+    rows = query_job.result()
 
     # preserve camelcase
 
@@ -170,13 +168,13 @@ def export_counties_rate_of_change():
     for row in rows:
         new_row = {}
         for col in columns:
-            new_row[col] = row[col.lower()]
+            new_row[col] = row[col]
         new_rows.append(new_row)
 
     with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in new_rows]))
 
-    conn.close()
+    client.close()
 
 
 @timer
@@ -260,21 +258,21 @@ def export_counties_casesper100k():
 
 @timer
 def export_state_info():
-    conn = get_db_conn()
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    client = get_bq_client()
 
-    c.execute('''
+    sql = """
         SELECT *
-        FROM dim_state;
-    ''')
-
-    rows = c.fetchall()
+        FROM models.dim_state
+        ORDER BY state
+    """
+    query_job = client.query(sql)
+    rows = query_job.result()
 
     with codecs.open("data/state_population.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
-    conn.close()
+    client.close()
 
 
 def create_exports():
@@ -282,8 +280,8 @@ def create_exports():
     processes = [
         multiprocessing.Process(target=export_state_info)
         ,multiprocessing.Process(target=export_counties_rate_of_change)
-        ,multiprocessing.Process(target=export_counties_7day_avg)
-        ,multiprocessing.Process(target=export_counties_casesper100k)
+        # ,multiprocessing.Process(target=export_counties_7day_avg)
+        # ,multiprocessing.Process(target=export_counties_casesper100k)
     ]
 
     for p in processes:

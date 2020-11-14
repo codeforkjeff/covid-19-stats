@@ -8,9 +8,7 @@ import os
 import os.path
 import time
 
-import psycopg2.extras
-
-from .common import get_db_conn, timer, touch_file, Path, bq_load_flat_file
+from .common import timer, touch_file, Path, bq_load
 
 
 ordered_fields = [
@@ -66,8 +64,6 @@ def get_rows_from_csse_file(path):
 @timer
 def load_csse():
 
-    conn = get_db_conn()
-
     # TODO: should probably use path relative to this .py file
     spec = os.path.join('..', 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
     print(f"Looking for files: {spec}")
@@ -85,42 +81,6 @@ def load_csse():
 
     print(f"Writing {len(all_rows)} rows to the database")
 
-    c = conn.cursor()
-
-    # #c.execute("PRAGMA synchronous=OFF")
-    # c.execute("PRAGMA cache_size=10000000")
-    # c.execute("PRAGMA journal_mode = OFF")
-    # #c.execute("PRAGMA locking_mode = EXCLUSIVE")
-    # c.execute("PRAGMA temp_store = MEMORY")
-
-    c.execute('''
-        DROP TABLE IF EXISTS raw_csse;
-    ''')
-
-    # CREATE UNLOGGED TABLE
-    c.execute('''
-        CREATE UNLOGGED TABLE raw_csse (
-            Date text,
-            FIPS text,
-            Admin2 text,
-            Province_State text,
-            Country_Region text,
-            Last_Update text,
-            Lat text,
-            Long_ text,
-            Confirmed text,
-            Deaths text,
-            Recovered text,
-            Active text,
-            Combined_Key text
-            )
-    ''')
-
-    conn.commit()
-
-    #c.executemany('INSERT INTO raw_csse VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, 0)', all_rows)
-    #psycopg2.extras.execute_batch(c, 'INSERT INTO raw_csse VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, 0)', all_rows)
-
     start_time = time.perf_counter()
 
     buf = io.StringIO()
@@ -134,15 +94,13 @@ def load_csse():
         f.write("\n")
         f.write(buf.getvalue())
 
-    bq_load_flat_file("stage/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
+    bq_load("stage/raw_csse.txt", "gs://covid-19-sources/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
     end_time = time.perf_counter()
     run_time = end_time - start_time
     rate = len(all_rows) / run_time
 
     print(f"copy_from took {run_time:.4f} secs ({rate:.4f} rows/s)")
-
-    conn.commit()
 
     # -- find rows that should havbe a fips code but doesn't.
     # -- I think these are actually okay to let by.
@@ -152,8 +110,6 @@ def load_csse():
     # where
     #     shouldhavefips = 1
     #     and (fips is null or length(fips) <> 5 or fips = '00000')
-
-    c.close()
 
     touch_file('stage/csse.loaded')
 

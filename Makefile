@@ -25,26 +25,28 @@ load: \
 	echo "Loaded"
 
 stage/csse.loaded: \
-	$(modules) covid19stats/csse.py \
+	$(modules) covid19stats/csse_load.py \
 	../COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv
 
-	python3 -m covid19stats.csse
+	python3 -m covid19stats.csse_load
 
 stage/cdc_deaths.loaded: \
-	$(modules) covid19stats/cdc_deaths.py \
-	input/cdc_deaths_2019_2020.txt
+	$(modules) covid19stats/cdc_deaths_load.py \
+	stage/cdc_deaths_2019_2020.txt
 
-	python3 -m covid19stats.cdc_deaths
+	python3 -m covid19stats.cdc_deaths_load
 
 stage/reference_data.loaded: \
-	$(modules) covid19stats/reference_data.py \
+	$(modules) covid19stats/reference_data_load.py \
 	reference/*
 
-	python3 -m covid19stats.reference_data
+	python3 -m covid19stats.reference_data_load
 
-stage/covidtracking.loaded: input/covidtracking_states.csv
+stage/covidtracking.loaded: \
+	$(modules) covid19stats/covidtracking_load.py \
+	stage/covidtracking_states.csv
 
-	python3 -m covid19stats.covidtracking
+	python3 -m covid19stats.covidtracking_load
 
 transform:
 
