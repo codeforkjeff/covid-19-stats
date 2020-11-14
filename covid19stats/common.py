@@ -4,12 +4,14 @@
 import codecs
 from collections import namedtuple
 import csv
+import datetime
 import functools
 import hashlib
 import io
 import os
 import os.path
 import pathlib
+import pytz
 import re
 import shlex
 import shutil
@@ -23,10 +25,12 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-import psycopg2
+from google.cloud import bigquery
+from google.cloud import storage
 
 Path = namedtuple('Path', ['path', 'date'])
 
+utc=pytz.UTC
 
 def timer(func):
     """Print the runtime of the decorated function"""
@@ -195,3 +199,128 @@ def bq_load_flat_file(path, table_name, delimiter=",", encoding='utf-8'):
     cmd = f"{bq_path} {bq_global_opts} load --skip_leading_rows=1 {load_opts} {table_name} {path}"
     print(f"Runnning: {cmd}", flush=True)
     subprocess.run(shlex.split(cmd), check=True)
+
+
+def get_bq_project_id():
+    path = os.path.expanduser("~/.dbt/profiles.yml")
+    if os.path.exists(path):
+        profiles = yaml.load(open(path).read(), Loader=Loader)
+        dev = profiles['covid19_bigquery']['outputs']['dev']
+        return dev['project']
+    else:
+        raise Exception(f"{path} doesn't exist, can't get db connection params")
+
+
+def get_bq_dataset():
+    path = os.path.expanduser("~/.dbt/profiles.yml")
+    if os.path.exists(path):
+        profiles = yaml.load(open(path).read(), Loader=Loader)
+        dev = profiles['covid19_bigquery']['outputs']['dev']
+        return dev['dataset']
+    else:
+        raise Exception(f"{path} doesn't exist, can't get db connection params")
+
+
+def sync_to_bucket(local_path, bucket_uri):
+    project_id = get_bq_project_id()
+
+    client = storage.Client(project=project_id)
+
+    (bucket_name, bucket_path) = parse_gs_uri(bucket_uri)
+    bucket = client.get_bucket(bucket_name)
+
+    blob = bucket.blob(bucket_path)
+
+    if blob.exists():
+        blob.reload()
+        blob_last_updated = blob.updated
+    else:
+        blob_last_updated = utc.localize(datetime.datetime.utcfromtimestamp(0))
+
+    file_timestamp = utc.localize(datetime.datetime.utcfromtimestamp(os.path.getmtime(local_path)))
+
+    if not blob.exists() or file_timestamp >= blob_last_updated:
+
+        # needed to prevent connection timeouts when upstream is slow
+        #
+        # https://github.com/googleapis/python-storage/issues/74
+        blob.chunk_size = 5 * 1024 * 1024 # Set 5 MB blob size
+
+        blob.upload_from_filename(filename=local_path)
+        print(f"Uploaded {local_path} to {bucket_uri}")
+        return True
+    else:
+        print(f"File {local_path} not modified since last sync to bucket, doing nothing.")
+
+    return False
+
+
+def get_utc_now():
+    # returns tz-aware datetime object for current time
+    return utc.localize(datetime.datetime.utcnow())
+
+
+def parse_gs_uri(uri):
+    stripped = uri.replace("gs://", "")
+    (bucket, path) = stripped.split("/", 1)
+    return (bucket, path)
+
+
+def bq_load(local_path, bucket_uri, table, delimiter=",", encoding="utf8"):
+    """
+    Sync a local file up to a storage bucket location and reload the
+    source table in BigQuery.
+    """
+    synced = sync_to_bucket(local_path, bucket_uri)
+
+    if synced:
+        print(f"Reloading table {table}")
+
+        column_names = []
+
+        with codecs.open(local_path, encoding=encoding) as f:
+            headers = f.readline().strip()
+            column_names = [clean_column_name(name) for name in headers.split(delimiter)]
+
+        bq_load_from_bucket(bucket_uri, table, column_names, delimiter)
+
+
+def bq_load_from_bucket(bucket_uri, table, column_names, delimiter):
+    """
+    table should be "dataset.table"
+    """
+    project_id = get_bq_project_id()
+
+    client = bigquery.Client(project=project_id)
+
+    table_id = project_id + "." + table
+
+    job_config = bigquery.LoadJobConfig(
+        schema=[bigquery.SchemaField(column_name, "STRING") for column_name in column_names],
+        skip_leading_rows=1,
+        write_disposition=bigquery.job.WriteDisposition.WRITE_TRUNCATE,
+        # The source format defaults to CSV, so the line below is optional.
+        source_format=bigquery.SourceFormat.CSV,
+        field_delimiter=delimiter
+    )
+
+    load_job = client.load_table_from_uri(
+        bucket_uri, table_id, job_config=job_config
+    )
+
+    load_job.result()  # Waits for the job to complete.
+
+    destination_table = client.get_table(table_id)
+    print("Loaded {} rows.".format(destination_table.num_rows))
+
+
+def get_bq_client():
+    """
+    factory method for client objects for BigQuery
+    """
+    query_job_config = bigquery.job.QueryJobConfig(
+        default_dataset=get_bq_project_id() + "." + get_bq_dataset())
+
+    client = bigquery.Client(project=get_bq_project_id(),
+                             default_query_job_config=query_job_config)
+    return client

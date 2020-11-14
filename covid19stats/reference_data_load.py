@@ -4,15 +4,13 @@ import csv
 import datetime
 import os.path
 
-from .common import get_db_conn, timer, touch_file, load_flat_file, load_table, bq_load_flat_file
+from .common import timer, touch_file, bq_load
 
 
 @timer
 def load_county_population(conn):
 
-#    load_flat_file("reference/co-est2019-alldata.csv", conn, 'raw_county_population', encoding='latin1')
-    bq_load_flat_file("reference/co-est2019-alldata.csv", 'source_tables.raw_county_population', encoding='latin1')
-
+    bq_load("reference/co-est2019-alldata.csv", "gs://covid-19-sources/co-est2019-alldata.csv", 'source_tables.raw_county_population', encoding='latin1')
 
 @timer
 def load_county_gazetteer(conn):
@@ -23,7 +21,7 @@ def load_county_gazetteer(conn):
 
     # https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html
 
-    bq_load_flat_file("reference/2019_Gaz_counties_national.txt", 'source_tables.raw_county_gazetteer', delimiter="\t")
+    bq_load("reference/2019_Gaz_counties_national.txt", "gs://covid-19-sources/2019_Gaz_counties_national.txt", 'source_tables.raw_county_gazetteer', delimiter="\t")
 
 
 @timer
@@ -46,13 +44,12 @@ def load_county_acs_vars(conn):
                 out.write(",".join(row))
                 out.write("\n")
 
-    bq_load_flat_file("reference/county_acs_2018.csv", 'source_tables.raw_county_acs', encoding='latin1')
+    bq_load("reference/county_acs_2018.csv", "gs://covid-19-sources/county_acs_2018.csv", 'source_tables.raw_county_acs', encoding='latin1')
 
 
 def load_state_info(conn):
 
-#    load_flat_file("reference/nst-est2019-alldata.csv", conn, 'raw_nst_population', encoding='latin1')
-    bq_load_flat_file("reference/nst-est2019-alldata.csv", 'source_tables.raw_nst_population', encoding='latin1')
+    bq_load("reference/nst-est2019-alldata.csv", "gs://covid-19-sources/nst-est2019-alldata.csv", 'source_tables.raw_nst_population', encoding='latin1')
 
 
 def load_raw_date():
@@ -85,17 +82,17 @@ def load_raw_date():
         for row in rows:
             writer.writerow(row)
 
-    bq_load_flat_file("stage/raw_date.csv", 'source_tables.raw_date')
+    bq_load("stage/raw_date.csv", "gs://covid-19-sources/raw_date.csv", 'source_tables.raw_date')
 
 
 def load_raw_state_abbreviations():
 
-    bq_load_flat_file("reference/raw_state_abbreviations.csv", 'source_tables.raw_state_abbreviations')
+    bq_load("reference/raw_state_abbreviations.csv", "gs://covid-19-sources/raw_state_abbreviations.csv", 'source_tables.raw_state_abbreviations')
 
 
 def load_reference_data():
 
-    conn = get_db_conn()
+    conn = None# get_db_conn()
 
     load_state_info(conn)
 
