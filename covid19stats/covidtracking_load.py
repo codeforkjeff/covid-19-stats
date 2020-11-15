@@ -2,13 +2,13 @@
 import codecs
 import csv
 
-from .common import timer, touch_file, bq_load
+from .common import timer, touch_file, bq_load, sources_bucket
 
 
 @timer
 def load_covidtracking_states():
 
-    bq_load("stage/covidtracking_states.csv", "gs://covid-19-sources/covidtracking_states.csv", 'source_tables.raw_covidtracking_states')
+    bq_load("stage/covidtracking_states.csv", f"gs://{sources_bucket}/covidtracking_states.csv", 'source_tables.raw_covidtracking_states')
 
     touch_file('stage/covidtracking.loaded')
 

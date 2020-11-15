@@ -8,7 +8,7 @@ import os
 import os.path
 import time
 
-from .common import timer, touch_file, Path, bq_load
+from .common import timer, touch_file, Path, bq_load, sources_bucket
 
 
 ordered_fields = [
@@ -94,7 +94,7 @@ def load_csse():
         f.write("\n")
         f.write(buf.getvalue())
 
-    bq_load("stage/raw_csse.txt", "gs://covid-19-sources/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
+    bq_load("stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
     end_time = time.perf_counter()
     run_time = end_time - start_time
