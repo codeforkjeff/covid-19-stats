@@ -16,7 +16,8 @@ idea to do a fresh clone from scratch.)
 # How to Run This
 
 This runs nightly in a docker container, using BigQuery for the data warehouse
-and Google Cloud Storage to store files. 
+and Google Cloud Storage to store data files and also serve them for web pages
+below.
 
 If you want to run this yourself, your best best is to setup Google accounts
 on those services and use the docker setup and tweak it. See this repo:
