@@ -1,10 +1,10 @@
 version: 2
 
 sources:
-  # name has to be the postgres schema
+  # name is the schema
   - name: public
     description: raw source data
-    schema: source_tables.
+    schema: source_tables
     tables:
       - name: raw_cdc_deaths_2014_2018
         tags:
