@@ -232,12 +232,15 @@ def get_bq_keyfile():
     return profile['keyfile']
 
 
-def sync_to_bucket(local_path, bucket_uri):
-    project_id = get_bq_project_id()
-
+def get_gcs_client():
     client = storage.Client.from_service_account_json(
         get_bq_keyfile(),
-        project=project_id)
+        project=get_bq_project_id())
+    return client
+
+
+def sync_to_bucket(local_path, bucket_uri):
+    client = get_gcs_client()
 
     (bucket_name, bucket_path) = parse_gs_uri(bucket_uri)
     bucket = client.get_bucket(bucket_name)

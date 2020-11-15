@@ -7,7 +7,7 @@ import multiprocessing
 
 from google.cloud import bigquery
 
-from .common import get_db_conn, timer, row_to_dict, get_bq_client, sync_to_bucket, public_bucket
+from .common import get_db_conn, timer, row_to_dict, get_bq_client, sync_to_bucket, public_bucket, get_gcs_client
 
 public_bucket = 'codeforkjeff-covid-19-public'
 
@@ -280,6 +280,22 @@ def export_state_info():
     sync_to_bucket("data/state_population.json", f"gs://{public_bucket}/state_population.json")
 
 
+def set_allow_cors_on_bucket(bucket_name):
+
+    bucket = get_gcs_client().get_bucket(bucket_name)
+    bucket.cors = [
+        {
+            "origin": ["*"],
+            "responseHeader": [
+                "Content-Type",
+                "x-goog-resumable"],
+            "method": ['GET'],
+            "maxAgeSeconds": 3600
+        }
+    ]
+    bucket.patch()
+
+
 def create_exports():
 
     processes = [
@@ -294,6 +310,11 @@ def create_exports():
 
     for p in processes:
         p.join()
+
+    # this really only needs to happen once ever on the bucket
+    # but we set it every time this fn is called, just in case
+    set_allow_cors_on_bucket(public_bucket)
+
 
 if __name__ == "__main__":
     create_exports()
