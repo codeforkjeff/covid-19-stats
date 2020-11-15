@@ -180,24 +180,22 @@ def export_counties_rate_of_change():
 @timer
 def export_counties_7day_avg():
 
-    conn = get_db_conn()
+    client = get_bq_client()
 
     print("exporting counties_7day_avg")
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
     #### for sparklines
 
-    c.execute('''
+    query_job = client.query('''
         SELECT
             FIPS, Date, Avg7DayConfirmedIncrease, Avg7DayDeathsIncrease
         FROM fact_counties_base
         WHERE
-            Date >= (SELECT MAX(date) FROM fact_counties_base) - interval '30 days'
+            Date >= DATE_SUB((SELECT MAX(date) FROM fact_counties_base), interval 30 day)
         ORDER BY date, FIPS;
     ''')
 
-    rows = c.fetchall()
+    rows = query_job.result()
 
     # with codecs.open("data/counties_7day_avg.json", "w", encoding='utf8') as f:
     #     f.write(json.dumps([row_to_dict(row) for row in rows]))
@@ -215,30 +213,28 @@ def export_counties_7day_avg():
     with codecs.open("data/counties_7day_avg.txt", "w", encoding='utf8') as f:
         f.write(buf.getvalue())
 
-    conn.close()
+    client.close()
 
 
 @timer
 def export_counties_casesper100k():
 
-    conn = get_db_conn()
+    client = get_bq_client()
 
     print("exporting counties_casesper100k")
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
     #### for sparklines
 
-    c.execute('''
+    query_job = client.query('''
         SELECT
             FIPS, Date, CasesPer100k
         FROM fact_counties_progress
         WHERE
-            Date >= (SELECT MAX(date) FROM fact_counties_progress) - interval '30 days'
+            Date >= DATE_SUB((SELECT MAX(date) FROM fact_counties_base), interval 30 day)
         ORDER BY FIPS, date;
     ''')
 
-    rows = c.fetchall()
+    rows = query_job.result()
 
     buf = io.StringIO()
     # for column in rows[0].keys():
@@ -253,7 +249,7 @@ def export_counties_casesper100k():
     with codecs.open("data/counties_casesper100k.txt", "w", encoding='utf8') as f:
         f.write(buf.getvalue())
 
-    conn.close()
+    client.close()
 
 
 @timer
@@ -278,10 +274,10 @@ def export_state_info():
 def create_exports():
 
     processes = [
-        multiprocessing.Process(target=export_state_info)
-        ,multiprocessing.Process(target=export_counties_rate_of_change)
-        # ,multiprocessing.Process(target=export_counties_7day_avg)
-        # ,multiprocessing.Process(target=export_counties_casesper100k)
+        #multiprocessing.Process(target=export_state_info)
+        #,multiprocessing.Process(target=export_counties_rate_of_change)
+         multiprocessing.Process(target=export_counties_7day_avg)
+         ,multiprocessing.Process(target=export_counties_casesper100k)
     ]
 
     for p in processes:
