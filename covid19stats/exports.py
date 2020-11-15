@@ -280,6 +280,11 @@ def export_state_info():
     sync_to_bucket("data/state_population.json", f"gs://{public_bucket}/state_population.json")
 
 
+def upload_shapefile():
+    # not an export, but maps need this file
+    sync_to_bucket("data/gz_2010_us_050_00_500k.json", f"gs://{public_bucket}/gz_2010_us_050_00_500k.json")
+
+
 def set_allow_cors_on_bucket(bucket_name):
 
     bucket = get_gcs_client().get_bucket(bucket_name)
@@ -303,6 +308,7 @@ def create_exports():
         ,multiprocessing.Process(target=export_counties_rate_of_change)
         ,multiprocessing.Process(target=export_counties_7day_avg)
         ,multiprocessing.Process(target=export_counties_casesper100k)
+        ,multiprocessing.Process(target=upload_shapefile)
     ]
 
     for p in processes:
