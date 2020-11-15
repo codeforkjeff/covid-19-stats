@@ -52,10 +52,16 @@ transform:
 
 	python3 -m covid19stats.transform_updated
 
-export: \
-	$(modules) covid19stats/exports.py
+stage/last_exported: \
+	stage/transforms.updated
 
 	python3 -m covid19stats.exports
+
+export: \
+	$(modules) covid19stats/exports.py \
+	stage/last_exported
+
+	echo "Exported"
 
 clean:
 	rm -rf stage/*.loaded

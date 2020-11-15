@@ -4,12 +4,15 @@ import csv
 import io
 import json
 import multiprocessing
+import pathlib
 
 from google.cloud import bigquery
 
 from .common import get_db_conn, timer, row_to_dict, get_bq_client, sync_to_bucket, public_bucket, get_gcs_client
 
 public_bucket = 'codeforkjeff-covid-19-public'
+
+last_exported_file = "stage/last_exported"
 
 @timer
 def export_counties_ranked():
@@ -320,6 +323,8 @@ def create_exports():
     # this really only needs to happen once ever on the bucket
     # but we set it every time this fn is called, just in case
     set_allow_cors_on_bucket(public_bucket)
+
+    pathlib.Path(last_exported_file).touch()
 
 
 if __name__ == "__main__":
