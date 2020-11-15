@@ -10,11 +10,11 @@ What's in this repo:
 
 # How to Run This
 
-This is set up to run nightly in a docker container, using BigQuery for the
-data warehouse and Google Cloud Storage to store files. 
+This runs nightly in a docker container, using BigQuery for the data warehouse
+and Google Cloud Storage to store files. 
 
-If you want to run this yourself, your best best is to use the docker setup
-and tweak it. See this repo:
+If you want to run this yourself, your best best is to setup Google accounts
+on those services and use the docker setup and tweak it. See this repo:
 
 https://github.com/codeforkjeff/docker-covid-19-stats
 
@@ -47,15 +47,6 @@ can't tell this information at a glance in the simpler choropleth map.
 <https://codeforkjeff.github.io/covid-19-stats/counties_progress.html>
 
 <https://codeforkjeff.github.io/covid-19-stats/states_progress.html>
-
-## Various Charts
-
-Obsolete: this is no longer being maintained.
-
-This was my earliest effort, intended to view data adjusted for population size. With time, these charts aren't very
-informative anymore. They're all on a single page, so it takes a while to load.
-
-<https://codeforkjeff.github.io/covid-19-stats/covid-19-stats.html>
 
 # Working with the data
 
