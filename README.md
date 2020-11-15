@@ -6,70 +6,17 @@ except satisfying your personal curiosity.
 
 What's in this repo:
 - ELT for cleaning COVID-19 data from various sources and transforming it into dimensional models
-- provides web interfaces for viewing the data in various ways
+- web interfaces for viewing the data in various ways
 
-# How to Run This in Docker
+# How to Run This
 
-There's some instructions and scripts for running this stuff in docker here:
+This is set up to run nightly in a docker container, using BigQuery for the
+data warehouse and Google Cloud Storage to store files. 
+
+If you want to run this yourself, your best best is to use the docker setup
+and tweak it. See this repo:
+
 https://github.com/codeforkjeff/docker-covid-19-stats
-
-# How to Run This Otherwise
-
-Install PostgreSQL if you don't already have it running somewhere. Create a database
-and a user account that can access it.
-
-Set up a Python environment using `requirements.txt`
-
-Clone the following repo in the same directory where you cloned this repo, to get
-the data files:
-https://github.com/CSSEGISandData/COVID-19
-
-Create a `~/.dbt/profiles.yml` file if you don't already have one. Append the
-following to it:
-
-```
-covid19:
-  outputs:
-
-    dev:
-      # modify as needed
-      type: postgres
-      threads: 1
-      host: localhost
-      port: 5432
-      user: jeff
-      pass: password
-      dbname: covid19
-      schema: public
-
-    prod:
-      type: redshift
-      method: iam
-      cluster_id: [cluster_id]
-      threads: [1 or more]
-      host: [host]
-      port: [port]
-      user: [prod_user]
-      dbname: [dbname]
-      schema: [prod_schema]
-
-  target: dev
-```
-
-Run:
-
-```
-# download/update data; re-run this daily/periodically
-make extract
-# load source files into database tables
-make load
-# transforms
-make transform
-# create exports (files used by web pages)
-make export
-```
-
-You should end up with tables in the database and files in the `data/` directory.
 
 # Charts and Tables
 
