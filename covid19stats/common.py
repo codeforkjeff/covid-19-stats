@@ -32,6 +32,14 @@ Path = namedtuple('Path', ['path', 'date'])
 
 utc=pytz.UTC
 
+bq_path = "/opt/google-cloud-sdk/bin/bq"
+
+bq_global_opts = "--project_id covid-19-stats-294405"
+
+sources_bucket = 'codeforkjeff-covid-19-sources'
+
+public_bucket = 'codeforkjeff-covid-19-public'
+
 def timer(func):
     """Print the runtime of the decorated function"""
     @functools.wraps(func)
@@ -172,9 +180,6 @@ def load_table(conn, table_name, column_names, rows, drop_if_exists=True):
     fast_bulk_insert(conn, rows, table_name)
 
     conn.commit()
-
-bq_path = "/opt/google-cloud-sdk/bin/bq"
-bq_global_opts = "--project_id covid-19-stats-294405"
 
 
 def bq_load_flat_file(path, table_name, delimiter=",", encoding='utf-8'):

@@ -7,8 +7,9 @@ import multiprocessing
 
 from google.cloud import bigquery
 
-from .common import get_db_conn, timer, row_to_dict, get_bq_client
+from .common import get_db_conn, timer, row_to_dict, get_bq_client, sync_to_bucket, public_bucket
 
+public_bucket = 'codeforkjeff-covid-19-public'
 
 @timer
 def export_counties_ranked():
@@ -176,6 +177,8 @@ def export_counties_rate_of_change():
 
     client.close()
 
+    sync_to_bucket("data/counties_rate_of_change.json", f"gs://{public_bucket}/counties_rate_of_change.json")
+
 
 @timer
 def export_counties_7day_avg():
@@ -215,6 +218,8 @@ def export_counties_7day_avg():
 
     client.close()
 
+    sync_to_bucket("data/counties_7day_avg.txt", f"gs://{public_bucket}/counties_7day_avg.txt")
+
 
 @timer
 def export_counties_casesper100k():
@@ -251,6 +256,8 @@ def export_counties_casesper100k():
 
     client.close()
 
+    sync_to_bucket("data/counties_casesper100k.txt", f"gs://{public_bucket}/counties_casesper100k.txt")
+
 
 @timer
 def export_state_info():
@@ -269,6 +276,8 @@ def export_state_info():
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
     client.close()
+
+    sync_to_bucket("data/state_population.json", f"gs://{public_bucket}/state_population.json")
 
 
 def create_exports():
