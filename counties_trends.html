@@ -309,7 +309,7 @@ $(document).ready(function() {
 
     $.when(
 
-		$.get("data/counties_rate_of_change.json?" + new Date().getTime()).done(function(data) {
+		$.get("https://storage.googleapis.com/codeforkjeff-covid-19-public/counties_rate_of_change.json?" + new Date().getTime()).done(function(data) {
 
 			var date = data[0]['Date'];
 			$("#heading").html("COVID-19 County Trends - As of " + date);
@@ -322,7 +322,7 @@ $(document).ready(function() {
 	    	}, {});
 	    }),
 
-		$.get("data/counties_7day_avg.txt?" + new Date().getTime(), function(data) {
+		$.get("https://storage.googleapis.com/codeforkjeff-covid-19-public/counties_7day_avg.txt?" + new Date().getTime(), function(data) {
 
 		  var lines = data.split("\n");
 		  lines.forEach(line => {
@@ -348,7 +348,7 @@ $(document).ready(function() {
 		}),
 
 		// https://eric.clst.org/tech/usgeojson/
-		$.get("data/gz_2010_us_050_00_500k.json?" + new Date().getTime()).done(function(data) {	
+		$.get("https://storage.googleapis.com/codeforkjeff-covid-19-public/gz_2010_us_050_00_500k.json?" + new Date().getTime()).done(function(data) {	
 			counties_geojson = data;
 		})
 

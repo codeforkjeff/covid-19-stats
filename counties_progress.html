@@ -161,11 +161,11 @@
 
             $.when(
 
-                $.get("data/counties_rate_of_change.json?" + new Date().getTime(), function(data) {
+                $.get("https://storage.googleapis.com/codeforkjeff-covid-19-public/counties_rate_of_change.json?" + new Date().getTime(), function(data) {
                     counties_rate_of_change = data;
                 }),
 
-                $.get("data/counties_7day_avg.txt?" + new Date().getTime(), function(data) {
+                $.get("https://storage.googleapis.com/codeforkjeff-covid-19-public/counties_7day_avg.txt?" + new Date().getTime(), function(data) {
 
                   var lines = data.split("\n");
                   lines.forEach(line => {
