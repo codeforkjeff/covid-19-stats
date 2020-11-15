@@ -8,6 +8,11 @@ What's in this repo:
 - ELT for cleaning COVID-19 data from various sources and transforming it into dimensional models
 - web interfaces for viewing the data in various ways
 
+(Note: on 11/14/2020, I removed the large output files that were being
+committed daily (ugh) from the repo's history, reducing its size by a few
+hundred megabytes. If you have been tracking this project, it's a good
+idea to do a fresh clone from scratch.)
+
 # How to Run This
 
 This runs nightly in a docker container, using BigQuery for the data warehouse
