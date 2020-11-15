@@ -1,24 +1,17 @@
 
-{{
-  config({
-    "pre-hook": 'drop index if exists idx_{{ this.table }}',
-    "post-hook": 'create index if not exists idx_{{ this.table }} on {{ this }} (FIPS)'
-    })
-}}
-
 WITH t AS (
         SELECT
             STNAME,
             CTYNAME,
             STATE || COUNTY AS FIPS,
-            CAST(POPESTIMATE2019 as INT) as Population
+            CAST(POPESTIMATE2019 as INT64) as Population
         FROM {{ source('public', 'raw_county_population') }}
         UNION ALL
         SELECT
             NAME, 
             NAME,
             '00072',
-            CAST(POPESTIMATE2019 as INT) as Population
+            CAST(POPESTIMATE2019 as INT64) as Population
         FROM {{ source('public', 'raw_nst_population') }}
         WHERE NAME = 'Puerto Rico'
 )

@@ -13,9 +13,9 @@ us_pop as (
         sum(positive) as positive,
         sum(positiveIncrease) as positiveIncrease,
         sum(totalTestResultsIncrease) as totalTestResultsIncrease,
-        CAST(NULL AS REAL) as Avg7DayPositiveIncrease,
-        CAST(NULl AS REAL) as Avg7DayTotalTestResultsIncrease
-        --CAST(NULL AS REAL) AS CasesPer100k
+        CAST(NULL AS FLOAT64) as Avg7DayPositiveIncrease,
+        CAST(NULl AS FLOAT64) as Avg7DayTotalTestResultsIncrease
+        --CAST(NULL AS FLOAT64) AS CasesPer100k
     from {{ ref('fact_states') }}
     group by date
 )
@@ -25,12 +25,12 @@ us_pop as (
         n.positive - two_weeks_ago.positive as TwoWeekIncrease
     from base n
     left join base two_weeks_ago
-        ON two_weeks_ago.Date = n.Date - interval '14 days'
+        ON two_weeks_ago.Date = date_sub(n.Date, interval 14 day)
 )
 ,cases_per_100k AS (
     select
         date,
-        cast(TwoWeekIncrease AS REAL) * 100000 / nullif(Population, 0) AS CasesPer100k
+        cast(TwoWeekIncrease AS FLOAT64) * 100000 / nullif(Population, 0) AS CasesPer100k
     from two_week_increase
     cross join us_pop
 )
@@ -40,9 +40,8 @@ us_pop as (
         SUM(one_week_period.positiveIncrease) / 7.0 AS Avg7DayPositiveIncrease,
         SUM(one_week_period.totalTestResultsIncrease) / 7.0 AS Avg7DayTotalTestResultsIncrease
     from base n
-    left join base one_week_period
-        ON one_week_period.Date > n.Date - interval '7 days'
-        AND one_week_period.Date <= n.date
+    JOIN base one_week_period
+    ON one_week_period.Date between date_sub(n.Date, interval 6 day) and n.date
     GROUP BY n.date
 )
 SELECT

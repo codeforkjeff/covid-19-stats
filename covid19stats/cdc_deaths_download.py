@@ -9,7 +9,7 @@ def download_cdc_deaths_data():
 
     download_and_update( \
         'https://data.cdc.gov/api/views/muzy-jte6/rows.tsv?accessType=DOWNLOAD&bom=true', \
-        "input/cdc_deaths_2019_2020.txt", \
+        "stage/cdc_deaths_2019_2020.txt", \
         threshold=threshold)
 
     # this file doesn't change often, if at all, so every month
@@ -17,7 +17,7 @@ def download_cdc_deaths_data():
 
     download_and_update( \
         'https://data.cdc.gov/api/views/3yf8-kanr/rows.tsv?accessType=DOWNLOAD&bom=true', \
-        "input/cdc_deaths_2014_2018.txt", \
+        "stage/cdc_deaths_2014_2018.txt", \
         threshold=threshold)
 
 

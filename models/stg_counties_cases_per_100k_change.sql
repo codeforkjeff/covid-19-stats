@@ -1,4 +1,9 @@
 
+{{
+  config({
+    "materialized": 'view'
+    })
+}}
 
 SELECT
     t1.FIPS

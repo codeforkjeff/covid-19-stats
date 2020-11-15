@@ -5,10 +5,11 @@ import io
 import json
 import multiprocessing
 
-import psycopg2.extras
+from google.cloud import bigquery
 
-from .common import get_db_conn, timer, row_to_dict
+from .common import get_db_conn, timer, row_to_dict, get_bq_client, sync_to_bucket, public_bucket, get_gcs_client
 
+public_bucket = 'codeforkjeff-covid-19-public'
 
 @timer
 def export_counties_ranked():
@@ -82,16 +83,14 @@ def export_counties_ranked():
 @timer
 def export_counties_rate_of_change():
 
-    conn = get_db_conn()
+    client = get_bq_client()
 
     print("exporting counties_rate_of_change")
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    c.execute('''
+    query_job = client.query('''
         SELECT
             t.FIPS,
-            to_char(Date, 'YYYY-MM-DD') AS Date,
+            FORMAT_DATE("%F", Date) AS Date,
             c.County,
             s.StateAbbrev as State,
             c.Lat,
@@ -129,7 +128,7 @@ def export_counties_rate_of_change():
         ORDER BY t.FIPS, Date;
     ''')
 
-    rows = c.fetchall()
+    rows = query_job.result()
 
     # preserve camelcase
 
@@ -170,36 +169,36 @@ def export_counties_rate_of_change():
     for row in rows:
         new_row = {}
         for col in columns:
-            new_row[col] = row[col.lower()]
+            new_row[col] = row[col]
         new_rows.append(new_row)
 
     with codecs.open("data/counties_rate_of_change.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in new_rows]))
 
-    conn.close()
+    client.close()
+
+    sync_to_bucket("data/counties_rate_of_change.json", f"gs://{public_bucket}/counties_rate_of_change.json")
 
 
 @timer
 def export_counties_7day_avg():
 
-    conn = get_db_conn()
+    client = get_bq_client()
 
     print("exporting counties_7day_avg")
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
     #### for sparklines
 
-    c.execute('''
+    query_job = client.query('''
         SELECT
             FIPS, Date, Avg7DayConfirmedIncrease, Avg7DayDeathsIncrease
         FROM fact_counties_base
         WHERE
-            Date >= (SELECT MAX(date) FROM fact_counties_base) - interval '30 days'
+            Date >= DATE_SUB((SELECT MAX(date) FROM fact_counties_base), interval 30 day)
         ORDER BY date, FIPS;
     ''')
 
-    rows = c.fetchall()
+    rows = query_job.result()
 
     # with codecs.open("data/counties_7day_avg.json", "w", encoding='utf8') as f:
     #     f.write(json.dumps([row_to_dict(row) for row in rows]))
@@ -217,30 +216,30 @@ def export_counties_7day_avg():
     with codecs.open("data/counties_7day_avg.txt", "w", encoding='utf8') as f:
         f.write(buf.getvalue())
 
-    conn.close()
+    client.close()
+
+    sync_to_bucket("data/counties_7day_avg.txt", f"gs://{public_bucket}/counties_7day_avg.txt")
 
 
 @timer
 def export_counties_casesper100k():
 
-    conn = get_db_conn()
+    client = get_bq_client()
 
     print("exporting counties_casesper100k")
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
     #### for sparklines
 
-    c.execute('''
+    query_job = client.query('''
         SELECT
             FIPS, Date, CasesPer100k
         FROM fact_counties_progress
         WHERE
-            Date >= (SELECT MAX(date) FROM fact_counties_progress) - interval '30 days'
+            Date >= DATE_SUB((SELECT MAX(date) FROM fact_counties_base), interval 30 day)
         ORDER BY FIPS, date;
     ''')
 
-    rows = c.fetchall()
+    rows = query_job.result()
 
     buf = io.StringIO()
     # for column in rows[0].keys():
@@ -255,26 +254,51 @@ def export_counties_casesper100k():
     with codecs.open("data/counties_casesper100k.txt", "w", encoding='utf8') as f:
         f.write(buf.getvalue())
 
-    conn.close()
+    client.close()
+
+    sync_to_bucket("data/counties_casesper100k.txt", f"gs://{public_bucket}/counties_casesper100k.txt")
 
 
 @timer
 def export_state_info():
-    conn = get_db_conn()
 
-    c = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    client = get_bq_client()
 
-    c.execute('''
+    sql = """
         SELECT *
-        FROM dim_state;
-    ''')
-
-    rows = c.fetchall()
+        FROM models.dim_state
+        ORDER BY state
+    """
+    query_job = client.query(sql)
+    rows = query_job.result()
 
     with codecs.open("data/state_population.json", "w", encoding='utf8') as f:
         f.write(json.dumps([row_to_dict(row) for row in rows]))
 
-    conn.close()
+    client.close()
+
+    sync_to_bucket("data/state_population.json", f"gs://{public_bucket}/state_population.json")
+
+
+def upload_shapefile():
+    # not an export, but maps need this file
+    sync_to_bucket("data/gz_2010_us_050_00_500k.json", f"gs://{public_bucket}/gz_2010_us_050_00_500k.json")
+
+
+def set_allow_cors_on_bucket(bucket_name):
+
+    bucket = get_gcs_client().get_bucket(bucket_name)
+    bucket.cors = [
+        {
+            "origin": ["*"],
+            "responseHeader": [
+                "Content-Type",
+                "x-goog-resumable"],
+            "method": ['GET'],
+            "maxAgeSeconds": 3600
+        }
+    ]
+    bucket.patch()
 
 
 def create_exports():
@@ -284,6 +308,7 @@ def create_exports():
         ,multiprocessing.Process(target=export_counties_rate_of_change)
         ,multiprocessing.Process(target=export_counties_7day_avg)
         ,multiprocessing.Process(target=export_counties_casesper100k)
+        ,multiprocessing.Process(target=upload_shapefile)
     ]
 
     for p in processes:
@@ -291,6 +316,11 @@ def create_exports():
 
     for p in processes:
         p.join()
+
+    # this really only needs to happen once ever on the bucket
+    # but we set it every time this fn is called, just in case
+    set_allow_cors_on_bucket(public_bucket)
+
 
 if __name__ == "__main__":
     create_exports()

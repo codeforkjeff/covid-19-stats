@@ -1,11 +1,4 @@
 
-{{
-  config({
-    "pre-hook": 'drop index if exists idx_{{ this.table }}',
-    "post-hook": 'create index if not exists idx_{{ this.table }} on {{ this }} (County, State)'
-    })
-}}
-
 WITH MostRecent AS (
     SELECT
         *
@@ -20,8 +13,8 @@ SELECT DISTINCT
     Long_,
     Combined_Key,
     Population,
-    CAST(CP03_2014_2018_062E as integer) AS MedianIncome,
-    cast(CP05_2014_2018_018E as float) AS MedianAge
+    CAST(CP03_2014_2018_062E as INT64) AS MedianIncome,
+    cast(CP05_2014_2018_018E as FLOAT64) AS MedianAge
 FROM MostRecent t1
 LEFT JOIN {{ ref('final_fips_population') }} t2
     ON t1.FIPS = t2.FIPS
