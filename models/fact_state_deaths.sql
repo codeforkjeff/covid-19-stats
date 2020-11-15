@@ -37,8 +37,8 @@ select
     a.AvgDeaths_2014_2019,
     cd.All_Cause as Deaths2019,
     cd2.All_Cause as Deaths2020,
-    coalesce(cd2.All_Cause,0) - coalesce(cd.All_Cause,0) AS Excess,
-    cast(coalesce(cd2.All_Cause,0) - coalesce(cd.All_Cause,0) as float64) / cd.All_Cause * 100.0 as Pct,
+    coalesce(cd2.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) AS Excess,
+    cast(coalesce(cd2.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) as float64) / a.AvgDeaths_2014_2019 * 100.0 as Pct,
     d.Covid19DeathsForWeek
 from {{ ref('final_cdc_deaths') }} cd
 join {{ ref('final_cdc_deaths') }} cd2
