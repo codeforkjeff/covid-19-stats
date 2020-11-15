@@ -274,10 +274,10 @@ def export_state_info():
 def create_exports():
 
     processes = [
-        #multiprocessing.Process(target=export_state_info)
-        #,multiprocessing.Process(target=export_counties_rate_of_change)
-         multiprocessing.Process(target=export_counties_7day_avg)
-         ,multiprocessing.Process(target=export_counties_casesper100k)
+        multiprocessing.Process(target=export_state_info)
+        ,multiprocessing.Process(target=export_counties_rate_of_change)
+        ,multiprocessing.Process(target=export_counties_7day_avg)
+        ,multiprocessing.Process(target=export_counties_casesper100k)
     ]
 
     for p in processes:

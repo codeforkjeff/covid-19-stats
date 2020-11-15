@@ -201,30 +201,38 @@ def bq_load_flat_file(path, table_name, delimiter=",", encoding='utf-8'):
     subprocess.run(shlex.split(cmd), check=True)
 
 
-def get_bq_project_id():
+@functools.lru_cache
+def get_dbt_profile():
     path = os.path.expanduser("~/.dbt/profiles.yml")
     if os.path.exists(path):
         profiles = yaml.load(open(path).read(), Loader=Loader)
         dev = profiles['covid19_bigquery']['outputs']['dev']
-        return dev['project']
+        return dev
     else:
         raise Exception(f"{path} doesn't exist, can't get db connection params")
+
+
+def get_bq_project_id():
+    profile = get_dbt_profile()
+    return profile['project']
 
 
 def get_bq_dataset():
-    path = os.path.expanduser("~/.dbt/profiles.yml")
-    if os.path.exists(path):
-        profiles = yaml.load(open(path).read(), Loader=Loader)
-        dev = profiles['covid19_bigquery']['outputs']['dev']
-        return dev['dataset']
-    else:
-        raise Exception(f"{path} doesn't exist, can't get db connection params")
+    profile = get_dbt_profile()
+    return profile['dataset']
+
+
+def get_bq_keyfile():
+    profile = get_dbt_profile()
+    return profile['keyfile']
 
 
 def sync_to_bucket(local_path, bucket_uri):
     project_id = get_bq_project_id()
 
-    client = storage.Client(project=project_id)
+    client = storage.Client.from_service_account_json(
+        get_bq_keyfile(),
+        project=project_id)
 
     (bucket_name, bucket_path) = parse_gs_uri(bucket_uri)
     bucket = client.get_bucket(bucket_name)
@@ -289,10 +297,10 @@ def bq_load_from_bucket(bucket_uri, table, column_names, delimiter):
     """
     table should be "dataset.table"
     """
+
+    client = get_bq_client()
+
     project_id = get_bq_project_id()
-
-    client = bigquery.Client(project=project_id)
-
     table_id = project_id + "." + table
 
     job_config = bigquery.LoadJobConfig(
@@ -321,6 +329,9 @@ def get_bq_client():
     query_job_config = bigquery.job.QueryJobConfig(
         default_dataset=get_bq_project_id() + "." + get_bq_dataset())
 
-    client = bigquery.Client(project=get_bq_project_id(),
-                             default_query_job_config=query_job_config)
+    client = bigquery.Client.from_service_account_json(
+        get_bq_keyfile(),
+        project=get_bq_project_id(),
+        default_query_job_config=query_job_config)
+
     return client
