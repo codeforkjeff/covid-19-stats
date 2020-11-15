@@ -61,6 +61,16 @@ def download_state_info():
         threshold=threshold)
 
 
+def download_county_boundary_file():
+
+    # I don't think this file ever gets updated
+
+    download_and_update( \
+        'https://eric.clst.org/assets/wiki/uploads/Stuff/gz_2010_us_050_00_500k.json', \
+        "reference/gz_2010_us_050_00_500k.json", \
+        threshold=None)
+
+
 @timer
 def download_reference_data():
 
@@ -71,6 +81,8 @@ def download_reference_data():
     download_county_acs_vars()
 
     download_state_info()
+
+    download_county_boundary_file()
 
 
 if __name__ == "__main__":

@@ -116,7 +116,7 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
 
     downloaded = False
 
-    if (not exists) or time.time() - os.path.getmtime(path) > threshold:
+    if (not exists) or (threshold is not None and time.time() - os.path.getmtime(path) > threshold):
         with urllib.request.urlopen(url) as f:
             data = f.read()
             hash_latest = hashlib.md5(data)

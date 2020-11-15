@@ -282,7 +282,7 @@ def export_state_info():
 
 def upload_shapefile():
     # not an export, but maps need this file
-    sync_to_bucket("data/gz_2010_us_050_00_500k.json", f"gs://{public_bucket}/gz_2010_us_050_00_500k.json")
+    sync_to_bucket("reference_data/gz_2010_us_050_00_500k.json", f"gs://{public_bucket}/gz_2010_us_050_00_500k.json")
 
 
 def set_allow_cors_on_bucket(bucket_name):
