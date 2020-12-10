@@ -15,8 +15,6 @@ SELECT
     t1.Recovered,
     t1.Active
 FROM {{ ref('stg_csse_filtered') }} t1
-JOIN {{ ref('dim_date') }} t1_date
-    ON t1.Date = t1_date.Date
 LEFT JOIN {{ ref('stg_csse_filtered') }} earlier
     ON t1.FIPS = earlier.FIPS
-    AND t1_date.Minus1Day = earlier.Date
+    AND DATE_SUB(t1.Date, INTERVAL 1 day) = earlier.Date

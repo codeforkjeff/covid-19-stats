@@ -15,6 +15,4 @@ SELECT
 FROM {{ ref('fact_counties_base') }} t1
 JOIN {{ ref('fact_counties_base') }} t2
     ON t1.FIPS = t2.FIPS
-JOIN {{ ref('dim_date') }} t2_date
-    ON t2.date = t2_date.date
-    AND t1.Date = t2_date.Minus30Days
+    AND t1.Date = DATE_SUB(t2.Date, INTERVAL 30 day)
