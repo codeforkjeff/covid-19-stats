@@ -52,7 +52,7 @@ transform: \
 	stage/transforms.updated
 	echo "Transformed"
 
-stage/transforms.updated: \
+stage/transforms.updated:
 	python3 -m covid19stats.transform_updated
 
 stage/last_exported: \
