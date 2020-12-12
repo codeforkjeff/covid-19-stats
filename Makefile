@@ -48,11 +48,8 @@ stage/covidtracking.loaded: \
 
 	python3 -m covid19stats.covidtracking_load
 
-transform: \
-	stage/transforms.updated
-	echo "Transformed"
+transform:
 
-stage/transforms.updated:
 	python3 -m covid19stats.transform_updated
 
 stage/last_exported: \
