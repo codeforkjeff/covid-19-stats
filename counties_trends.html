@@ -224,9 +224,7 @@ $(document).ready(function() {
                             color = "#9999FF";
                         } else if (record.TwoWeekAvg7DayConfirmedIncreasePct >= -1) {
                             color = "#7F7FFF";
-                        } else {
-                            color = "#6666FF";
-  	                    }
+                        }
                     }
 
 					return {
@@ -386,7 +384,6 @@ $(document).ready(function() {
 		    div.innerHTML += "<i style='background: #B2B2FF'></i>26 - 50% decrease<br/>";
 		    div.innerHTML += "<i style='background: #9999FF'></i>51 - 75% decrease<br/>";
 		    div.innerHTML += "<i style='background: #7F7FFF'></i>76 - 100% decrease<br/>";
-		    div.innerHTML += "<i style='background: #6666FF'></i>&gt; 100% decrease<br/>";
 
 		    return div;
 		};
