@@ -12,6 +12,8 @@ sources:
       - name: raw_cdc_deaths_2019_2020
         tags:
           - "cdc_deaths"
+      - name: raw_cdc_states
+        description: state-level data from CDC
       - name: raw_covidtracking_states
         tags:
           - "covidtracking"
