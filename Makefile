@@ -18,10 +18,12 @@ extract:
 
 	python3 -m covid19stats.cdc_deaths_download
 
+	python3 -m covid19stats.cdc_states_download
+
 	python3 -m covid19stats.reference_data_download
 
 load: \
-	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded stage/cdc_deaths.loaded
+	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded stage/cdc_deaths.loaded stage/cdc_states.loaded
 	echo "Loaded"
 
 stage/csse.loaded: \
@@ -35,6 +37,12 @@ stage/cdc_deaths.loaded: \
 	stage/cdc_deaths_2019_2020.txt
 
 	python3 -m covid19stats.cdc_deaths_load
+
+stage/cdc_states.loaded: \
+	$(modules) covid19stats/cdc_states_load.py \
+	stage/cdc_states.tsv
+
+	python3 -m covid19stats.cdc_states_load
 
 stage/reference_data.loaded: \
 	$(modules) covid19stats/reference_data_load.py \
