@@ -100,6 +100,19 @@ def touch_file(path):
     pathlib.Path(path).touch()
 
 
+def md5_of_file(path):
+    with open(path, "rb") as f:
+        file_hash = hashlib.md5()
+        keep_going = True
+        while keep_going:
+            # use 10 MB buffer to avoid running out of memory on large files
+            chunk = f.read(10485760)
+            file_hash.update(chunk)
+            if not chunk:
+                keep_going = False
+    return file_hash.hexdigest()
+
+
 # 3 hours
 UPDATE_THRESHOLD = 60 * 60 * 3
 
@@ -118,12 +131,14 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
 
     if (not exists) or (threshold is not None and time.time() - os.path.getmtime(path) > threshold):
         print(f"Downloading {url}")
-        with urllib.request.urlopen(url) as f:
-            data = f.read()
-            hash_latest = hashlib.md5(data)
-            with open(path_latest, 'wb') as output:
-                output.write(data)
-            size_latest = os.path.getsize(path_latest)
+        urllib.request.urlretrieve(url, path_latest)
+        # with urllib.request.urlopen(url) as f:
+        #     data = f.read()
+        #     hash_latest = hashlib.md5(data)
+        #     with open(path_latest, 'wb') as output:
+        #         output.write(data)
+        size_latest = os.path.getsize(path_latest)
+        hash_latest = md5_of_file(path_latest)
         downloaded = True
 
     replace = False
@@ -132,9 +147,7 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
         if exists:
             size = os.path.getsize(path)
             if size == size_latest:
-                with open(path, 'rb') as f:
-                    data = f.read()
-                    hash = hashlib.md5(data)
+                hash = md5_of_file(path)
                 if hash != hash_latest:
                     replace = True
             else:
