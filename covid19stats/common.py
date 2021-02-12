@@ -299,10 +299,10 @@ def bq_load(local_path, bucket_uri, table, delimiter=",", encoding="utf8"):
             headers = f.readline().strip()
             column_names = [clean_column_name(name) for name in headers.split(delimiter)]
 
-        bq_load_from_bucket(bucket_uri, table, column_names, delimiter)
+        bq_load_from_uri(bucket_uri, table, column_names, delimiter)
 
 
-def bq_load_from_bucket(bucket_uri, table, column_names, delimiter):
+def bq_load_from_uri(uri, table, column_names, delimiter):
     """
     table should be "dataset.table"
     """
@@ -322,7 +322,7 @@ def bq_load_from_bucket(bucket_uri, table, column_names, delimiter):
     )
 
     load_job = client.load_table_from_uri(
-        bucket_uri, table_id, job_config=job_config
+        uri, table_id, job_config=job_config
     )
 
     load_job.result()  # Waits for the job to complete.
