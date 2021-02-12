@@ -2,7 +2,7 @@
 import codecs
 import csv
 
-from .common import timer, touch_file, bq_load_from_uri, sources_bucket, sync_to_bucket
+from .common import timer, touch_file, bq_load, sources_bucket, sync_to_bucket
 
 
 @timer
