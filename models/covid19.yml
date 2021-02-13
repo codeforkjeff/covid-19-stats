@@ -14,6 +14,8 @@ sources:
           - "cdc_deaths"
       - name: raw_cdc_states
         description: state-level data from CDC
+      - name: raw_cdc_surveillance_cases
+        description: case surveillance data
       - name: raw_covidtracking_states
         tags:
           - "covidtracking"

@@ -7,6 +7,8 @@ def download_cdc_surveillance_cases_data():
     # every month
     threshold = 60 * 60 * 24 * 30
 
+    # https://data.cdc.gov/Case-Surveillance/COVID-19-Case-Surveillance-Public-Use-Data/vbim-akqf
+
     download_and_update( \
         'https://data.cdc.gov/api/views/vbim-akqf/rows.tsv?accessType=DOWNLOAD&bom=true', \
         "stage/cdc_surveillance_cases.tsv", \
