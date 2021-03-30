@@ -30,17 +30,11 @@ covidtracking AS (
 
 )
 ,states as (
-    SELECT *
-    FROM covidtracking
-    -- TODO: use CDC data when covidtracking halts in March
-    
     -- SELECT *
     -- FROM covidtracking
-    -- WHERE Date < '2020-02-01'
-    -- UNION ALL
-    -- SELECT *
-    -- FROM cdc
-    -- WHERE Date >= '2020-02-01'
+
+    SELECT *
+    FROM cdc
 )
 ,two_week_increase as (
     select
