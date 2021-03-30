@@ -159,7 +159,7 @@
                 } else {
                   console.log("Warning: couldn't find a canvas element for " + state);
                 }
-
+                /*
                 var posi = sparkline_moving_positivity_data[state];
                 if(document.getElementById('sparkline-positivity-' + state)) {
                   var ctx = document.getElementById('sparkline-positivity-' + state).getContext('2d');
@@ -171,7 +171,7 @@
                 } else {
                   console.log("Warning: couldn't find a canvas element for " + state);
                 }
-
+*/
                 var death = sparkline_moving_death_data[state];
                 if(document.getElementById('sparkline-deaths-' + state)) {
                   var ctx = document.getElementById('sparkline-deaths-' + state).getContext('2d');
@@ -185,9 +185,29 @@
             }
 
             //$.ajax("daily.json").done(function(data) {
-            $.ajax("https://api.covidtracking.com/v1/states/daily.json").done(function(data) {
-              
-              data = data.filter(row => row.state != 'AS' && row.positiveIncrease >= 0);
+            $.ajax("https://storage.googleapis.com/codeforkjeff-covid-19-public/states_7day_avg.txt?" + new Date().getTime()).done(function(data) {
+
+                var rows = [];
+		        var lines = data.split("\n");
+		        lines.forEach(line => {
+		            var pieces = line.split("\t")
+		            var row = {
+		                state: pieces[0],
+		                date: pieces[1],
+                        positive: parseInt(pieces[2]),
+                        positiveIncrease: parseInt(pieces[3]),
+                        death: parseInt(pieces[4]),
+                        deathIncrease: parseInt(pieces[5]),
+		                Avg7DayConfirmedIncrease: parseFloat(pieces[6]),
+		                Avg7DayDeathsIncrease: parseFloat(pieces[7])
+		            };
+
+		            rows.push(row);
+		        });
+
+                data = rows;
+
+                data = data.filter(row => row.state != 'AS' && row.positiveIncrease >= 0);
 
               // make records for US as a whole
               var us_records = data.reduce((acc, row) => {
@@ -214,9 +234,9 @@
               data = data.concat(us_records);
 
               data.sort(comparator);
-              
+
               var date = data[data.length-1].date.toString();
-              date = date.substring(0,4) + "/" + date.substring(4,6) + "/" + date.substring(6,8);
+              date = date.substring(0,4) + "/" + date.substring(5,7) + "/" + date.substring(8,10);
               $("#heading").html("Data As of " + date);
 
               var states_set = new Set(data.map(row => row.state));
@@ -231,17 +251,32 @@
 
                 var window_size = 7;
 
-                sparkline_moving_positive_data[state] =
-                  moving(window_size, single_state, item => item.positiveIncrease);
-                sparkline_moving_positivity_data[state] =
-                  moving(window_size, single_state, item => item.positive / item.totalTestResults);
-                sparkline_moving_death_data[state] =
-                  moving(window_size, single_state, item => item.deathIncrease);
+                // we calculate US here, so it doesn't have Avg7DayConfirmedIncrease
+                if(state != 'US') {
+                    sparkline_moving_positive_data[state] =
+                        last14.map(row => { return row.Avg7DayConfirmedIncrease });
+                } else {
+                    sparkline_moving_positive_data[state] =
+                        moving(window_size, single_state, item => item.positiveIncrease);
+                }
+
+                // no positivity data in CDC file
+                //sparkline_moving_positivity_data[state] =
+                //  moving(window_size, single_state, item => item.positive / item.totalTestResults);
+                sparkline_moving_positivity_data[state] = [0, 0];
+
+                if(state != 'US') {
+                    sparkline_moving_death_data[state] =
+                        last14.map(row => { return row.Avg7DayDeathsIncrease });
+                } else {
+                    sparkline_moving_death_data[state] =
+                        moving(window_size, single_state, item => item.deathIncrease);
+                }
 
                 var latest = single_state[single_state.length - 1];
 
                 var change_positive = changeFirstAndLast(sparkline_moving_positive_data[state]);
-                var change_positivity = changeFirstAndLast(sparkline_moving_positivity_data[state]);
+                var change_positivity = 0; //changeFirstAndLast(sparkline_moving_positivity_data[state]);
                 var change_death = changeFirstAndLast(sparkline_moving_death_data[state]);
 
                 return [
@@ -338,7 +373,7 @@
 
 <h2 id="heading"></h2>
 
-  <p>Source: <a href="https://covidtracking.com/">The COVID Tracking Project</a>
+  <p>Source: <a href="https://data.cdc.gov/Case-Surveillance/United-States-COVID-19-Cases-and-Deaths-by-State-o/9mfq-cb36">CDC</a>
 
   <p id="loading">Loading, hang on...</p>
       

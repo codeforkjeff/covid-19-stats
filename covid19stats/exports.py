@@ -184,6 +184,40 @@ def export_counties_rate_of_change():
 
 
 @timer
+def export_states_7day_avg():
+
+    client = get_bq_client()
+
+    print("exporting states_7day_avg")
+
+    #### for sparklines
+
+    query_job = client.query('''
+        SELECT
+            State, Date, positive, positiveIncrease, death, deathIncrease, Avg7DayPositiveIncrease, Avg7DayDeathIncrease
+        FROM models.fact_states
+        WHERE
+            Date >= DATE_SUB((SELECT MAX(date) FROM models.fact_states), interval 28 day)
+        ORDER BY State, date
+    ''')
+
+    rows = query_job.result()
+
+    buf = io.StringIO()
+    buf.write("State\tDate\tpositive\tpositiveIncrease\tdeath\tdeathIncrease\tAvg7DayConfirmedIncrease\tAvg7DayDeathsIncrease\n")
+    for row in rows:
+        buf.write("\t".join([str(value) for value in row]))
+        buf.write("\n")
+
+    with codecs.open("data/states_7day_avg.txt", "w", encoding='utf8') as f:
+        f.write(buf.getvalue())
+
+    client.close()
+
+    sync_to_bucket("data/states_7day_avg.txt", f"gs://{public_bucket}/states_7day_avg.txt")
+
+
+@timer
 def export_counties_7day_avg():
 
     client = get_bq_client()
@@ -311,6 +345,7 @@ def create_exports():
         ,multiprocessing.Process(target=export_counties_rate_of_change)
         ,multiprocessing.Process(target=export_counties_7day_avg)
         ,multiprocessing.Process(target=export_counties_casesper100k)
+        ,multiprocessing.Process(target=export_states_7day_avg)
         ,multiprocessing.Process(target=upload_shapefile)
     ]
 
