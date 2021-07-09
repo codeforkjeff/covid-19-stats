@@ -131,6 +131,7 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
 
     if (not exists) or (threshold is not None and time.time() - os.path.getmtime(path) > threshold):
         print(f"Downloading {url}")
+        urllib.request.urlcleanup()
         urllib.request.urlretrieve(url, path_latest)
         # with urllib.request.urlopen(url) as f:
         #     data = f.read()
@@ -155,7 +156,6 @@ def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
         else:
             replace = True
 
-    if downloaded:
         if replace:
             print("Downloaded file is different, replacing file")
             #os.rename(path_latest, path)
