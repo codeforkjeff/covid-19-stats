@@ -18,6 +18,8 @@ extract:
 
 	python3 -m covid19stats.cdc_deaths_download
 
+	python3 -m covid19stats.dhhs_testing_download
+
 	python3 -m covid19stats.cdc_states_download
 
 	python3 -m covid19stats.cdc_surveillance_cases_download	
@@ -25,7 +27,7 @@ extract:
 	python3 -m covid19stats.reference_data_download
 
 load: \
-	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded stage/cdc_deaths.loaded stage/cdc_states.loaded stage/cdc_surveillance_cases.loaded
+	stage/csse.loaded stage/reference_data.loaded stage/covidtracking.loaded stage/cdc_deaths.loaded stage/cdc_states.loaded stage/dhhs_testing.loaded stage/cdc_surveillance_cases.loaded
 	echo "Loaded"
 
 stage/csse.loaded: \
@@ -39,6 +41,12 @@ stage/cdc_deaths.loaded: \
 	stage/cdc_deaths_2019_2020.txt
 
 	python3 -m covid19stats.cdc_deaths_load
+
+stage/dhhs_testing.loaded: \
+	$(modules) covid19stats/dhhs_testing_load.py \
+	stage/dhhs_testing.tsv
+
+	python3 -m covid19stats.dhhs_testing_load
 
 stage/cdc_states.loaded: \
 	$(modules) covid19stats/cdc_states_load.py \

@@ -138,6 +138,16 @@
               return output;
             }
 
+            // find first record, starting from end of the array, with a non-null positivityRate
+            function findLatestPositivity(records) {
+              for(var i = records.length - 1; i > 0; i--) {
+                if(records[i].positivityRate) {
+                  return records[i]
+                }
+              }
+              return null;
+            }
+
             function round(x, places) {
               return x.toFixed(places);
             }
@@ -159,9 +169,9 @@
                 } else {
                   console.log("Warning: couldn't find a canvas element for " + state);
                 }
-                /*
+
                 var posi = sparkline_moving_positivity_data[state];
-                if(document.getElementById('sparkline-positivity-' + state)) {
+                if(posi.length > 0 && document.getElementById('sparkline-positivity-' + state)) {
                   var ctx = document.getElementById('sparkline-positivity-' + state).getContext('2d');
                   var chart = createSparkline(ctx, posi);
                   var start = (round(posi[0], 4) * 100).toFixed(2) + '%';
@@ -171,7 +181,7 @@
                 } else {
                   console.log("Warning: couldn't find a canvas element for " + state);
                 }
-*/
+
                 var death = sparkline_moving_death_data[state];
                 if(document.getElementById('sparkline-deaths-' + state)) {
                   var ctx = document.getElementById('sparkline-deaths-' + state).getContext('2d');
@@ -198,8 +208,10 @@
                         positiveIncrease: parseInt(pieces[3]),
                         death: parseInt(pieces[4]),
                         deathIncrease: parseInt(pieces[5]),
-		                Avg7DayConfirmedIncrease: parseFloat(pieces[6]),
-		                Avg7DayDeathsIncrease: parseFloat(pieces[7])
+                        positivityRate: parseFloat(pieces[6]),
+		                Avg7DayConfirmedIncrease: parseFloat(pieces[7]),
+		                Avg7DayDeathsIncrease: parseFloat(pieces[8]),
+                    Avg7DayPositivityRate: parseFloat(pieces[9])
 		            };
 
 		            rows.push(row);
@@ -237,7 +249,11 @@
 
               var date = data[data.length-1].date.toString();
               date = date.substring(0,4) + "/" + date.substring(5,7) + "/" + date.substring(8,10);
-              $("#heading").html("Data As of " + date);
+
+              var latestPositivityDate = findLatestPositivity(data).date.toString();
+              latestPositivityDate = latestPositivityDate.substring(0,4) + "/" + latestPositivityDate.substring(5,7) + "/" + latestPositivityDate.substring(8,10);
+
+              $("#as_of").html("Case count and deaths data (source: <a href='https://data.cdc.gov/Case-Surveillance/United-States-COVID-19-Cases-and-Deaths-by-State-o/9mfq-cb36'>CDC</a>) as of " + date + ". Test positivity data (source: <a href='https://healthdata.gov/dataset/COVID-19-Diagnostic-Laboratory-Testing-PCR-Testing/j8mb-icvb'>DHHS</a>) as of approx. " + latestPositivityDate + " (varies by state).");
 
               var states_set = new Set(data.map(row => row.state));
               var states = Array.from(states_set.values());
@@ -248,6 +264,7 @@
 
                 var last5 = lastN(single_state, 5);
                 var last14 = lastN(single_state, 14);
+                var last14withpositivity = lastN(single_state.filter(row => { return !!(row.positivityRate) }), 14);
 
                 var window_size = 7;
 
@@ -260,10 +277,12 @@
                         moving(window_size, single_state, item => item.positiveIncrease);
                 }
 
-                // no positivity data in CDC file
-                //sparkline_moving_positivity_data[state] =
-                //  moving(window_size, single_state, item => item.positive / item.totalTestResults);
-                sparkline_moving_positivity_data[state] = [0, 0];
+                if(state != 'US') {
+                  sparkline_moving_positivity_data[state] =
+                    last14withpositivity.map(row => { return row.Avg7DayPositivityRate });
+                } else {
+                  sparkline_moving_positivity_data[state] = []
+                }
 
                 if(state != 'US') {
                     sparkline_moving_death_data[state] =
@@ -274,9 +293,10 @@
                 }
 
                 var latest = single_state[single_state.length - 1];
+                var latestPositivity = findLatestPositivity(single_state);
 
                 var change_positive = changeFirstAndLast(sparkline_moving_positive_data[state]);
-                var change_positivity = 0; //changeFirstAndLast(sparkline_moving_positivity_data[state]);
+                var change_positivity = changeFirstAndLast(sparkline_moving_positivity_data[state]);
                 var change_death = changeFirstAndLast(sparkline_moving_death_data[state]);
 
                 return [
@@ -293,7 +313,7 @@
                   */
                   "<canvas class='centered sparkline' id='sparkline-positives-" + latest.state + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positives-start-" + latest.state + "'></span><span class='right' id='sparkline-positives-end-" + latest.state + "'></span></div>",
                   change_positive,
-                  latest.positive / latest.totalTestResults,
+                  latestPositivity ? latestPositivity.positivityRate : NaN,
                   "<canvas class='centered sparkline' id='sparkline-positivity-" + latest.state + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positivity-start-" + latest.state + "'></span><span class='right' id='sparkline-positivity-end-" + latest.state + "'></span></div>",
                   change_positivity,
                   /*
@@ -371,9 +391,9 @@
 </head>
 <body>
 
-<h2 id="heading"></h2>
+<h2>Trends in New Cases, Test Positivity Rates, and Deaths by State</h2>
 
-  <p>Source: <a href="https://data.cdc.gov/Case-Surveillance/United-States-COVID-19-Cases-and-Deaths-by-State-o/9mfq-cb36">CDC</a>
+  <p><span id="as_of"></span>
 
   <p id="loading">Loading, hang on...</p>
       

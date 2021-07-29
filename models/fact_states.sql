@@ -24,8 +24,7 @@ covidtracking AS (
         CAST(new_death AS INT64) AS deathIncrease,
         NULL AS hospitalized,
         NULL AS hospitalizedIncrease,
-        NULL AS totalTestResultsIncrease,
-        NULL AS PositivityRate
+        NULL AS totalTestResultsIncrease
     from {{ source('public', 'raw_cdc_states') }} s
 
 )
@@ -70,17 +69,18 @@ covidtracking AS (
 SELECT
     s.Date,
     s.state,
-    positive,
+    s.positive,
     positiveIncrease,
     death,
     deathIncrease,
     hospitalized,
     hospitalizedIncrease,
     totalTestResultsIncrease,
-    PositivityRate,
+    pos.positivityRate,
     CasesPer100k,
     Avg7DayPositiveIncrease,
-    Avg7DayDeathIncrease
+    Avg7DayDeathIncrease,
+    Avg7DayPositivityRate
 FROM states s
 LEFT JOIN two_week_increase
     ON two_week_increase.state = s.state
@@ -88,3 +88,6 @@ LEFT JOIN two_week_increase
 LEFT JOIN two_week_avg
     ON two_week_avg.state = s.state
     AND two_week_avg.Date = s.Date
+LEFT JOIN {{ ref('stg_states_positivity') }} pos
+    ON s.state = pos.state
+    AND s.date = pos.date

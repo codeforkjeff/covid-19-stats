@@ -194,7 +194,7 @@ def export_states_7day_avg():
 
     query_job = client.query('''
         SELECT
-            State, Date, positive, positiveIncrease, death, deathIncrease, Avg7DayPositiveIncrease, Avg7DayDeathIncrease
+            State, Date, positive, positiveIncrease, death, deathIncrease, positivityRate, Avg7DayPositiveIncrease, Avg7DayDeathIncrease, Avg7DayPositivityRate
         FROM models.fact_states
         WHERE
             Date >= DATE_SUB((SELECT MAX(date) FROM models.fact_states), interval 28 day)
@@ -204,7 +204,7 @@ def export_states_7day_avg():
     rows = query_job.result()
 
     buf = io.StringIO()
-    buf.write("State\tDate\tpositive\tpositiveIncrease\tdeath\tdeathIncrease\tAvg7DayConfirmedIncrease\tAvg7DayDeathsIncrease\n")
+    buf.write("State\tDate\tpositive\tpositiveIncrease\tdeath\tdeathIncrease\tpositivityRate\tAvg7DayConfirmedIncrease\tAvg7DayDeathsIncrease\tAvg7DayPositivityRate\n")
     for row in rows:
         buf.write("\t".join([str(value) for value in row]))
         buf.write("\n")

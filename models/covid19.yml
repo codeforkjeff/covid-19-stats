@@ -23,6 +23,9 @@ sources:
       - name: raw_covidtracking_states
         tags:
           - "covidtracking"
+      - name: raw_dhhs_testing
+        tags:
+          - "dhhs"
       - name: raw_csse
         tags:
           - "csse"
