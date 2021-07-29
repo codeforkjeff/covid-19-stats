@@ -313,7 +313,7 @@
                   */
                   "<canvas class='centered sparkline' id='sparkline-positives-" + latest.state + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positives-start-" + latest.state + "'></span><span class='right' id='sparkline-positives-end-" + latest.state + "'></span></div>",
                   change_positive,
-                  latestPositivity ? latestPositivity.positivityRate : NaN,
+                  latestPositivity ? latestPositivity.positivityRate : null,
                   "<canvas class='centered sparkline' id='sparkline-positivity-" + latest.state + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positivity-start-" + latest.state + "'></span><span class='right' id='sparkline-positivity-end-" + latest.state + "'></span></div>",
                   change_positivity,
                   /*
@@ -357,18 +357,26 @@
                     },
                     {
                       render: function(data, type, row) {
+                        if(data) {
                           var x = (round(data, 4) * 100).toFixed(2);
                           return x.toString() + '%';
+                        }
+                        // prevent returning NaN because it throws off sorting for some reason
+                        return null;
                       },
                       targets: [ 6 ]
                     },
                     {
                       render: function(data, type, row) {
+                        if(data) {
                           var x = (round(data, 4) * 100).toFixed(2);
                           if(x > 0) {
                             x =  "+" + x.toString();
                           }
                           return x.toString() + '%';
+                        }
+                        // prevent returning NaN because it throws off sorting for some reason
+                        return null;
                       },
                       targets: [ 3, 8, 11 ]
                     },
