@@ -1,0 +1,63 @@
+version: 1
+send_anonymous_usage_stats: false
+project_id: c8c451df-26dc-4a66-a64b-6ac434c5922e
+plugins:
+  extractors:
+  - name: tap-spreadsheets-anywhere
+    variant: ets
+    pip_url: git+https://github.com/ets/tap-spreadsheets-anywhere.git
+  - name: load-once
+    inherit_from: tap-spreadsheets-anywhere
+  - name: load-daily
+    inherit_from: tap-spreadsheets-anywhere
+  - name: load-weekly
+    inherit_from: tap-spreadsheets-anywhere
+    config:
+      tables:
+      - path: file:///home/jeff/covid-19-stats/stage
+        pattern: raw_cdc_deaths_2014_2018.csv
+        name: raw_cdc_deaths_2014_2018
+        start_date: '2017-05-01T00:00:00Z'
+        key_properties:
+        - date
+        - state
+        format: csv
+  - name: load-monthly
+    inherit_from: tap-spreadsheets-anywhere
+    config:
+      tables:
+      - path: file:///home/jeff/covid-19-stats/stage
+        pattern: raw_cdc_deaths_2019_2020.csv
+        name: raw_cdc_deaths_2019_2020
+        start_date: '2017-05-01T00:00:00Z'
+        key_properties:
+        - date
+        - state
+        format: csv
+    metadata:
+      covidtracking_states_test:
+        replication-method: INCREMENTAL
+        replication-key: lastUpdateEt
+  loaders:
+  - name: target-bigquery
+    variant: adswerve
+    pip_url: git+https://github.com/adswerve/target-bigquery.git@0.11.3
+    config:
+      project_id: covid-19-stats-294405
+      dataset_id: source_tables
+      location: us
+  - name: bigquery-reload
+    inherit_from: target-bigquery
+    config:
+      replication_method: truncate
+  orchestrators:
+  - name: airflow
+    pip_url: apache-airflow==2.1.2 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-2.1.2/constraints-${MELTANO__PYTHON_VERSION}.txt
+  transformers:
+  - name: dbt
+    pip_url: dbt==0.21.1
+  files:
+  - name: dbt
+    pip_url: git+https://gitlab.com/meltano/files-dbt.git@config-version-2
+  - name: airflow
+    pip_url: git+https://gitlab.com/meltano/files-airflow.git
