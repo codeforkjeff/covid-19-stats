@@ -1,12 +1,15 @@
 
 import codecs
 import csv
+import datetime
 import glob
 import io
 import multiprocessing
 import os
 import os.path
 import time
+
+import pytz
 
 from .common import timer, touch_file, Path, bq_load, sources_bucket
 
@@ -35,6 +38,10 @@ def get_sortable_date(path):
 def get_rows_from_csse_file(path):
     result = []
     print(f"Loading from {path.path}")
+
+    utc = pytz.UTC
+    updated_at = utc.localize(datetime.datetime.utcfromtimestamp(os.path.getmtime(path.path)))
+
     with codecs.open(path.path, encoding='utf8') as f:
         reader = csv.reader(f)
         field_order_in_file = []
@@ -51,7 +58,7 @@ def get_rows_from_csse_file(path):
                 for field in ordered_fields:
                     reordered.append(row[field_order_in_file.index(field)])
 
-                row = [path.date] + reordered
+                row = [path.date] + reordered + [updated_at]
 
                 #row = [None if val == '' else val for val in row]
 
@@ -73,34 +80,30 @@ def load_csse():
 
     all_rows = []
 
-    p = multiprocessing.Pool(20)
+    p = multiprocessing.Pool(4)
     for result in p.map(get_rows_from_csse_file, filtered_paths):
         all_rows = all_rows + result
     p.close()
 
 
-    print(f"Writing {len(all_rows)} rows to the database")
+    print(f"Writing {len(all_rows)} rows to file")
 
     start_time = time.perf_counter()
 
-    buf = io.StringIO()
-    for row in all_rows:
-        buf.write("\t".join(row))
-        buf.write("\n")
-    buf.seek(0)
+    with codecs.open("stage/raw_csse.csv", "w", encoding='utf-8') as f:
+        writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(['Date'] + ordered_fields + ['_updated_at'])
+        for row in all_rows:
+            writer.writerow(row)
+        #f.write(buf.getvalue())
 
-    with codecs.open("stage/raw_csse.txt", "w", encoding='utf-8') as f:
-        f.write("\t".join(['Date']+ordered_fields))
-        f.write("\n")
-        f.write(buf.getvalue())
+    #bq_load("stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
-    bq_load("stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
+    # end_time = time.perf_counter()
+    # run_time = end_time - start_time
+    # rate = len(all_rows) / run_time
 
-    end_time = time.perf_counter()
-    run_time = end_time - start_time
-    rate = len(all_rows) / run_time
-
-    print(f"copy_from took {run_time:.4f} secs ({rate:.4f} rows/s)")
+    #print(f"copy_from took {run_time:.4f} secs ({rate:.4f} rows/s)")
 
     # -- find rows that should havbe a fips code but doesn't.
     # -- I think these are actually okay to let by.
@@ -111,7 +114,7 @@ def load_csse():
     #     shouldhavefips = 1
     #     and (fips is null or length(fips) <> 5 or fips = '00000')
 
-    touch_file('stage/csse.loaded')
+    #touch_file('stage/csse.loaded')
 
 
 if __name__ == "__main__":

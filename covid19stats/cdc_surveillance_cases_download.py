@@ -10,8 +10,8 @@ def download_cdc_surveillance_cases_data():
     # https://data.cdc.gov/Case-Surveillance/COVID-19-Case-Surveillance-Public-Use-Data/vbim-akqf
 
     download_and_update( \
-        'https://data.cdc.gov/api/views/vbim-akqf/rows.tsv?accessType=DOWNLOAD&bom=true', \
-        "stage/cdc_surveillance_cases.tsv", \
+        'https://data.cdc.gov/api/views/vbim-akqf/rows.csv?accessType=DOWNLOAD', \
+        "stage/cdc_surveillance_cases.csv", \
         threshold=threshold)
 
 

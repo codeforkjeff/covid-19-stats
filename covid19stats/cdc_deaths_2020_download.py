@@ -1,0 +1,18 @@
+
+from .common import timer, download_and_update
+
+@timer
+def download_cdc_deaths_2020_data():
+
+    # every week
+    threshold = 60 * 60 * 24 * 7
+
+    download_and_update( \
+        'https://data.cdc.gov/api/views/muzy-jte6/rows.csv?accessType=DOWNLOAD', \
+        "stage/cdc_deaths_2019_2020.csv", \
+        threshold=threshold)
+
+
+if __name__ == "__main__":
+
+    download_cdc_deaths_2020_data()

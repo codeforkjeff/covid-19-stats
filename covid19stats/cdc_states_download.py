@@ -8,8 +8,8 @@ def download_cdc_states_data():
     threshold = 60 * 60 * 12
 
     download_and_update( \
-        'https://data.cdc.gov/api/views/9mfq-cb36/rows.tsv?accessType=DOWNLOAD&bom=true', \
-        "stage/cdc_states.tsv", \
+        'https://data.cdc.gov/api/views/9mfq-cb36/rows.csv?accessType=DOWNLOAD', \
+        "stage/cdc_states.csv", \
         threshold=threshold)
 
 

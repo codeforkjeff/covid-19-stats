@@ -8,36 +8,54 @@ plugins:
     pip_url: git+https://github.com/ets/tap-spreadsheets-anywhere.git
   - name: load-once
     inherit_from: tap-spreadsheets-anywhere
-  - name: load-daily
-    inherit_from: tap-spreadsheets-anywhere
-  - name: load-weekly
+  - name: load-csse
     inherit_from: tap-spreadsheets-anywhere
     config:
       tables:
       - path: file:///home/jeff/covid-19-stats/stage
-        pattern: raw_cdc_deaths_2014_2018.csv
+        pattern: raw_ccse.csv
+        name: raw_csse
+        start_date: '2017-05-01T00:00:00Z'
+        key_properties:
+        - Date
+        - Combined_Key
+        format: csv
+    metadata:
+      raw_csse:
+        replication-method: INCREMENTAL
+        replication-key: _updated_at
+  - name: load-cdc-states
+    inherit_from: tap-spreadsheets-anywhere
+    config:
+      tables:
+      - path: file:///home/jeff/covid-19-stats/stage
+        pattern: cdc_states.csv
+        name: raw_cdc_states
+        start_date: '2017-05-01T00:00:00Z'
+        key_properties:
+        - submission_date
+        - state
+        format: csv
+  - name: load-cdc-deaths
+    inherit_from: tap-spreadsheets-anywhere
+    config:
+      tables:
+      - path: file:///home/jeff/covid-19-stats/stage
+        pattern: cdc_deaths_2014_2018.csv
         name: raw_cdc_deaths_2014_2018
         start_date: '2017-05-01T00:00:00Z'
         key_properties:
         - date
         - state
         format: csv
-  - name: load-monthly
-    inherit_from: tap-spreadsheets-anywhere
-    config:
-      tables:
       - path: file:///home/jeff/covid-19-stats/stage
-        pattern: raw_cdc_deaths_2019_2020.csv
+        pattern: cdc_deaths_2019_2020.csv
         name: raw_cdc_deaths_2019_2020
         start_date: '2017-05-01T00:00:00Z'
         key_properties:
         - date
         - state
         format: csv
-    metadata:
-      covidtracking_states_test:
-        replication-method: INCREMENTAL
-        replication-key: lastUpdateEt
   loaders:
   - name: target-bigquery
     variant: adswerve
