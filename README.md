@@ -15,14 +15,41 @@ idea to do a fresh clone from scratch.)
 
 # How to Run This
 
-This runs nightly in a docker container, using BigQuery for the data warehouse
-and Google Cloud Storage to store data files and also serve them for web pages
-below.
+You'll need BigQuery.
 
-If you want to run this yourself, your best best is to setup Google accounts
-on those services and use the docker setup and tweak it. See this repo:
+```
+cd /path/to/covid-19-stats
 
-https://github.com/codeforkjeff/docker-covid-19-stats
+# build image for running the download scripts
+docker build . -t covid-19-stats-download
+
+# pull meltano image
+docker pull meltano/meltano:v1.90.1
+
+# create Google service account credentials file
+vi service-account.json
+
+# make sure your ~/.ssh dir exists and key is recognized by github 
+
+# edit meltano.yml and set the project_id and dataset_id for meltano
+
+# initialize meltano project
+./meltano_docker.sh install
+
+# these lines add to crontab:
+
+# twice a day
+0 5,17 * * * cd /home/jeff/covid-19-stats && ./download_docker.sh python3 -m covid19stats.csse_load >> download.log 2>> download.log
+0 6,18 * * * cd /home/jeff/covid-19-stats && ./download_docker.sh python3 -m covid19stats.dhhs_testing_download >> download.log 2>> download.log
+0 7,19 * * * cd /home/jeff/covid-19-stats && ./download_docker.sh python3 -m covid19stats.cdc_states_download >> download.log 2>> download.log
+0 8,21 * * * cd /home/jeff/covid-19-stats && ./meltano_docker.sh schedule run load-csse >> meltano.log 2>> meltano.log
+# once a week
+0 20 * * 7 cd /home/jeff/covid-19-stats && ./download_docker.sh python3 -m covid19stats.cdc_deaths_2020_download >> download.log 2>> download.log
+# once a month
+30 3 1 * * cd /home/jeff/covid-19-stats && ./download_docker.sh python3 -m covid19stats.cdc_deaths_2018_download >> download.log 2>> download.log
+30 4 1 * * cd /home/jeff/covid-19-stats && ./download_docker.sh python3 -m covid19stats.cdc_surveillance_cases_download >> download.log 2>> download.log
+30 5 1 * * cd /home/jeff/covid-19-stats && ./download_docker.sh python3 -m covid19stats.reference_data_download >> download.log 2>> download.log
+```
 
 # Charts and Tables
 
