@@ -10,5 +10,6 @@ docker run \
     -v "$(pwd)/service-account.json":"/service-account.json" \
     -e "GOOGLE_APPLICATION_CREDENTIALS=/service-account.json" \
     -w /project \
+    -it \
     meltano/meltano:v1.90.1 \
     $@
