@@ -36,6 +36,9 @@ vi service-account.json
 # initialize meltano project
 ./meltano_docker.sh install
 
+# do initial load of everything
+./meltano_docker.sh elt tap-spreadsheets-anywhere target-bigquery
+
 # these lines add to crontab:
 
 # twice a day

@@ -12,6 +12,7 @@ plugins:
         pattern: raw_csse.csv
         name: raw_csse
         start_date: '2017-05-01T00:00:00Z'
+        selected: false
         key_properties:
         - Date
         - Combined_Key
@@ -20,6 +21,7 @@ plugins:
         pattern: cdc_states.csv
         name: raw_cdc_states
         start_date: '2017-05-01T00:00:00Z'
+        selected: false
         key_properties:
         - submission_date
         - state
@@ -28,6 +30,7 @@ plugins:
         pattern: cdc_deaths_2014_2018.csv
         name: raw_cdc_deaths_2014_2018
         start_date: '2017-05-01T00:00:00Z'
+        selected: false
         key_properties:
         - date
         - state
@@ -36,6 +39,7 @@ plugins:
         pattern: cdc_deaths_2019_2020.csv
         name: raw_cdc_deaths_2019_2020
         start_date: '2017-05-01T00:00:00Z'
+        selected: false
         key_properties:
         - date
         - state
@@ -44,6 +48,7 @@ plugins:
         pattern: cdc_surveillance_cases.csv
         name: raw_cdc_surveillance_cases
         start_date: '2017-05-01T00:00:00Z'
+        selected: false
         # this file doesn't actually have a key
         key_properties:
         - cdc_case_earliest_dt
@@ -52,6 +57,7 @@ plugins:
         pattern: dhhs_testing.csv
         name: raw_dhhs_testing
         start_date: '2017-05-01T00:00:00Z'
+        selected: false
         key_properties:
         - state
         - overall_outcome
@@ -63,29 +69,25 @@ plugins:
         replication-key: _updated_at
   - name: tap-csse
     inherit_from: tap-spreadsheets-anywhere
-    select_filter:
-    - raw_csse
+    select:
+    - "raw_csse.*"
   - name: tap-cdc-states
     inherit_from: tap-spreadsheets-anywhere
-    select_filter:
-    - raw_cdc_states
+    select:
+    - raw_cdc_states.*
   - name: tap-cdc-deaths
     inherit_from: tap-spreadsheets-anywhere
-    select_filter:
-    - raw_cdc_deaths_2014_2018
-    - raw_cdc_deaths_2019_2020
-  - name: tap-cdc-surveillance-cases
-    inherit_from: tap-spreadsheets-anywhere
-    select_filter:
-    - cdc-surveillance-cases
+    select:
+    - raw_cdc_deaths_2014_2018.*
+    - raw_cdc_deaths_2019_2020.*
   - name: tap-dhhs-testing
     inherit_from: tap-spreadsheets-anywhere
-    select_filter:
-    - raw_dhhs_testing
+    select:
+    - raw_dhhs_testing.*
   - name: tap-reference-data
     inherit_from: tap-spreadsheets-anywhere
-    select_filter:
-    - raw_dhhs_testing
+    select:
+    - raw_dhhs_testing.*
   loaders:
   - name: target-bigquery
     variant: adswerve
@@ -116,9 +118,3 @@ schedules:
   transform: run
   interval: '@daily'
   start_date: 2021-12-21 19:32:34.591732
-# - name: load-incremental
-#   extractor: tap-incremental
-#   loader: target-bigquery
-#   transform: run
-#   interval: '@daily'
-#   start_date: 2021-12-23 19:32:34.591732
