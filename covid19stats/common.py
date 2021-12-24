@@ -119,6 +119,9 @@ UPDATE_THRESHOLD = 60 * 60 * 3
 
 def download_and_update(url, path, threshold=UPDATE_THRESHOLD):
 
+    # TODO: eliminate this param entirely
+    threshold=None
+
     hash = None
     size = None
     exists = os.path.exists(path)

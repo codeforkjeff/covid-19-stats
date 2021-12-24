@@ -6,29 +6,17 @@ plugins:
   - name: tap-spreadsheets-anywhere
     variant: ets
     pip_url: git+https://github.com/ets/tap-spreadsheets-anywhere.git
-  - name: load-once
-    inherit_from: tap-spreadsheets-anywhere
-  - name: load-csse
-    inherit_from: tap-spreadsheets-anywhere
     config:
       tables:
-      - path: file:///home/jeff/covid-19-stats/stage
-        pattern: raw_ccse.csv
+      - path: file://stage
+        pattern: raw_csse.csv
         name: raw_csse
         start_date: '2017-05-01T00:00:00Z'
         key_properties:
         - Date
         - Combined_Key
         format: csv
-    metadata:
-      raw_csse:
-        replication-method: INCREMENTAL
-        replication-key: _updated_at
-  - name: load-cdc-states
-    inherit_from: tap-spreadsheets-anywhere
-    config:
-      tables:
-      - path: file:///home/jeff/covid-19-stats/stage
+      - path: file://stage
         pattern: cdc_states.csv
         name: raw_cdc_states
         start_date: '2017-05-01T00:00:00Z'
@@ -36,11 +24,7 @@ plugins:
         - submission_date
         - state
         format: csv
-  - name: load-cdc-deaths
-    inherit_from: tap-spreadsheets-anywhere
-    config:
-      tables:
-      - path: file:///home/jeff/covid-19-stats/stage
+      - path: file://stage
         pattern: cdc_deaths_2014_2018.csv
         name: raw_cdc_deaths_2014_2018
         start_date: '2017-05-01T00:00:00Z'
@@ -48,7 +32,7 @@ plugins:
         - date
         - state
         format: csv
-      - path: file:///home/jeff/covid-19-stats/stage
+      - path: file://stage
         pattern: cdc_deaths_2019_2020.csv
         name: raw_cdc_deaths_2019_2020
         start_date: '2017-05-01T00:00:00Z'
@@ -56,6 +40,52 @@ plugins:
         - date
         - state
         format: csv
+      - path: file://stage
+        pattern: cdc_surveillance_cases.csv
+        name: raw_cdc_surveillance_cases
+        start_date: '2017-05-01T00:00:00Z'
+        # this file doesn't actually have a key
+        key_properties:
+        - cdc_case_earliest_dt
+        format: csv
+      - path: file://stage
+        pattern: dhhs_testing.csv
+        name: raw_dhhs_testing
+        start_date: '2017-05-01T00:00:00Z'
+        key_properties:
+        - state
+        - overall_outcome
+        - date
+        format: csv
+    metadata:
+      raw_csse:
+        replication-method: INCREMENTAL
+        replication-key: _updated_at
+  - name: tap-csse
+    inherit_from: tap-spreadsheets-anywhere
+    select_filter:
+    - raw_csse
+  - name: tap-cdc-states
+    inherit_from: tap-spreadsheets-anywhere
+    select_filter:
+    - raw_cdc_states
+  - name: tap-cdc-deaths
+    inherit_from: tap-spreadsheets-anywhere
+    select_filter:
+    - raw_cdc_deaths_2014_2018
+    - raw_cdc_deaths_2019_2020
+  - name: tap-cdc-surveillance-cases
+    inherit_from: tap-spreadsheets-anywhere
+    select_filter:
+    - cdc-surveillance-cases
+  - name: tap-dhhs-testing
+    inherit_from: tap-spreadsheets-anywhere
+    select_filter:
+    - raw_dhhs_testing
+  - name: tap-reference-data
+    inherit_from: tap-spreadsheets-anywhere
+    select_filter:
+    - raw_dhhs_testing
   loaders:
   - name: target-bigquery
     variant: adswerve
@@ -64,7 +94,7 @@ plugins:
       project_id: covid-19-stats-294405
       dataset_id: source_tables
       location: us
-  - name: bigquery-reload
+  - name: target-bigquery-reload
     inherit_from: target-bigquery
     config:
       replication_method: truncate
@@ -79,3 +109,16 @@ plugins:
     pip_url: git+https://gitlab.com/meltano/files-dbt.git@config-version-2
   - name: airflow
     pip_url: git+https://gitlab.com/meltano/files-airflow.git
+schedules:
+- name: load-csse
+  extractor: tap-csse
+  loader: target-bigquery
+  transform: run
+  interval: '@daily'
+  start_date: 2021-12-21 19:32:34.591732
+# - name: load-incremental
+#   extractor: tap-incremental
+#   loader: target-bigquery
+#   transform: run
+#   interval: '@daily'
+#   start_date: 2021-12-23 19:32:34.591732
