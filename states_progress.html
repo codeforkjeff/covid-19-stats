@@ -7,8 +7,8 @@
     <meta property="og:description" content="COVID-19 Rates of Change in U.S. Counties">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.css">
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
 
@@ -155,7 +155,14 @@
             function changeFirstAndLast(data) {
               return data[data.length - 1] - data[0];
             }
-           
+
+            function changeFirstAndLastPct(data) {
+              if(data[0] > 0) {
+                return (data[data.length - 1] - data[0]) / data[0];
+              }
+              return null;
+            }
+            
             function initSparklines() {
               var states = Object.keys(sparkline_moving_positive_data);
               for(var i = 0; i < states.length; i++) {
@@ -295,7 +302,7 @@
                 var latest = single_state[single_state.length - 1];
                 var latestPositivity = findLatestPositivity(single_state);
 
-                var change_positive = changeFirstAndLast(sparkline_moving_positive_data[state]);
+                var change_positive = changeFirstAndLastPct(sparkline_moving_positive_data[state]);
                 var change_positivity = changeFirstAndLast(sparkline_moving_positivity_data[state]);
                 var change_death = changeFirstAndLast(sparkline_moving_death_data[state]);
 
@@ -337,7 +344,7 @@
 
               $('#loading').hide();
               $('#states').show();
-                
+
               table = $('#states')
                 .on('draw.dt', initSparklines)
                 .DataTable({
@@ -353,7 +360,7 @@
                           }
                           return x;
                       },
-                      targets: [ 5, 13 ]
+                      targets: [ 13 ]
                     },
                     {
                       render: function(data, type, row) {
@@ -378,7 +385,7 @@
                         // prevent returning NaN because it throws off sorting for some reason
                         return null;
                       },
-                      targets: [ 3, 8, 11 ]
+                      targets: [ 3, 5, 8, 11 ]
                     },
                   ]
                 });
