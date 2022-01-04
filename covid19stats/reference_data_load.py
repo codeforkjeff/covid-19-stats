@@ -59,7 +59,7 @@ def load_raw_date():
 
     rows = []
     d = datetime.date(2020,1,1)
-    last = datetime.date(2021,12,31)
+    last = datetime.date(2025,12,31)
 
     td_1day = datetime.timedelta(days=1)
     td_7days = datetime.timedelta(days=7)
