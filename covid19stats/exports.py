@@ -184,7 +184,7 @@ def export_counties_rate_of_change():
 
     client.close()
 
-    sync_to_bucket("data/counties_rate_of_change.json", f"gs://{public_bucket}/counties_rate_of_change.json")
+    sync_to_bucket("data/counties_rate_of_change.json", f"gs://{public_bucket}/counties_rate_of_change.json", content_type="application/json")
 
 
 @timer
@@ -318,12 +318,12 @@ def export_state_info():
 
     client.close()
 
-    sync_to_bucket("data/state_population.json", f"gs://{public_bucket}/state_population.json")
+    sync_to_bucket("data/state_population.json", f"gs://{public_bucket}/state_population.json", content_type="application/json")
 
 
 def upload_shapefile():
     # not an export, but maps need this file
-    sync_to_bucket("reference/gz_2010_us_050_00_500k.json", f"gs://{public_bucket}/gz_2010_us_050_00_500k.json")
+    sync_to_bucket("reference/gz_2010_us_050_00_500k.json", f"gs://{public_bucket}/gz_2010_us_050_00_500k.json", content_type="application/json")
 
 
 def set_allow_cors_on_bucket(bucket_name):

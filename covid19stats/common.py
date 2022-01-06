@@ -24,6 +24,7 @@ try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
+import zlib
 
 from google.cloud import bigquery
 from google.cloud import storage
@@ -253,7 +254,7 @@ def get_gcs_client():
     return client
 
 
-def sync_to_bucket(local_path, bucket_uri):
+def sync_to_bucket(local_path, bucket_uri, content_type="text/plain"):
     client = get_gcs_client()
 
     (bucket_name, bucket_path) = parse_gs_uri(bucket_uri)
@@ -270,13 +271,20 @@ def sync_to_bucket(local_path, bucket_uri):
     file_timestamp = utc.localize(datetime.datetime.utcfromtimestamp(os.path.getmtime(local_path)))
 
     if not blob.exists() or file_timestamp >= blob_last_updated:
+        compresser = zlib.compressobj(9, zlib.DEFLATED, 31)
+        with open(local_path, "rb") as f:
+            data = compresser.compress(f.read()) + compresser.flush()
+
+        blob.cache_control = 'no-cache'
+        blob.content_encoding = 'gzip'
 
         # needed to prevent connection timeouts when upstream is slow
         #
         # https://github.com/googleapis/python-storage/issues/74
         blob.chunk_size = 5 * 1024 * 1024 # Set 5 MB blob size
 
-        blob.upload_from_filename(filename=local_path)
+        blob.upload_from_string(data, content_type=content_type)
+        #blob.upload_from_filename(filename=local_path)
         print(f"Uploaded {local_path} to {bucket_uri}")
         return True
     else:
