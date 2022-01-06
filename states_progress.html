@@ -304,7 +304,7 @@
 
                 var change_positive = changeFirstAndLastPct(sparkline_moving_positive_data[state]);
                 var change_positivity = changeFirstAndLast(sparkline_moving_positivity_data[state]);
-                var change_death = changeFirstAndLast(sparkline_moving_death_data[state]);
+                var change_death = changeFirstAndLastPct(sparkline_moving_death_data[state]);
 
                 return [
                   // positive cases
@@ -352,16 +352,16 @@
                   paging: false,
                   searching: false,
                   columnDefs: [
-                    {
-                      render: function(data, type, row) {
-                          var x = round(data, 2);
-                          if(x > 0) {
-                            x =  "+" + x.toString();
-                          }
-                          return x;
-                      },
-                      targets: [ 13 ]
-                    },
+                    // {
+                    //   render: function(data, type, row) {
+                    //       var x = round(data, 2);
+                    //       if(x > 0) {
+                    //         x =  "+" + x.toString();
+                    //       }
+                    //       return x;
+                    //   },
+                    //   targets: [ ]
+                    // },
                     {
                       render: function(data, type, row) {
                         if(data) {
@@ -385,7 +385,7 @@
                         // prevent returning NaN because it throws off sorting for some reason
                         return null;
                       },
-                      targets: [ 3, 5, 8, 11 ]
+                      targets: [ 3, 5, 8, 11, 13 ]
                     },
                   ]
                 });
