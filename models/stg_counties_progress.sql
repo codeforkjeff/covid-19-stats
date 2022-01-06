@@ -25,6 +25,7 @@ SELECT
     t.Deaths,
     t.DeathsIncrease,
     CAST(t.DeathsIncrease as FLOAT64) / nullif(t.Deaths - t.DeathsIncrease, 0) AS DeathsIncreasePct,
+    Avg7DayDeathsIncrease,
     coalesce(TwoWeekAvg7DayDeathsIncrease, 0) AS TwoWeekAvg7DayDeathsIncrease,
     coalesce(TwoWeekAvg7DayDeathsIncreasePct, 0) AS TwoWeekAvg7DayDeathsIncreasePct,
     MonthAvg7DayDeathsIncrease,

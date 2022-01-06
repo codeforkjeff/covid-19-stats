@@ -19,6 +19,7 @@ SELECT
     Deaths,
     DeathsIncrease,
     DeathsIncreasePct,
+    Avg7DayDeathsIncrease,
     TwoWeekAvg7DayDeathsIncrease,
     TwoWeekAvg7DayDeathsIncreasePct,
     MonthAvg7DayDeathsIncrease,
