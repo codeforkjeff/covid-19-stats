@@ -188,6 +188,17 @@
                     sparkline_moving_death_data[row.FIPS].push(row.Avg7DayDeathsIncrease);
                   });
 
+                  // take last 2 weeks
+                  Object.keys(sparkline_moving_positive_data).forEach(fips => {
+                      var size = sparkline_moving_positive_data[fips].length;
+                      sparkline_moving_positive_data[fips] = sparkline_moving_positive_data[fips].slice(size - 15, size);
+                  });
+
+                  // take last 2 weeks
+                  Object.keys(sparkline_moving_death_data).forEach(fips => {
+                      var size = sparkline_moving_death_data[fips].length;
+                      sparkline_moving_death_data[fips] = sparkline_moving_death_data[fips].slice(size - 15, size);
+                  });
                 })
 
             ).then(function() {
@@ -206,12 +217,12 @@
                   row.ConfirmedIncrease,
                   row.ConfirmedIncreasePct,
                   "<canvas class='centered sparkline sparkline-positives' data-fips='" + row.FIPS + "' id='sparkline-positives-" + row.FIPS + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positives-start-" + row.FIPS + "'></span><span class='right' id='sparkline-positives-end-" + row.FIPS + "'></span></div>",
-                  row.MonthAvg7DayConfirmedIncrease,
+                  row.TwoWeekAvg7DayConfirmedIncreasePct,
                   row.Deaths,
                   row.DeathsIncrease,
                   row.DeathsIncreasePct,
                   "<canvas class='centered sparkline sparkline-deaths' data-fips='" + row.FIPS + "' id='sparkline-deaths-" + row.FIPS + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-deaths-start-" + row.FIPS + "'></span><span class='right' id='sparkline-deaths-end-" + row.FIPS + "'></span></div>",
-                  row.MonthAvg7DayDeathsIncrease
+                  row.TwoWeekAvg7DayDeathsIncreasePct
                 ];
                 return values;
               });
@@ -232,7 +243,7 @@
                           var x = (round(data, 4) * 100).toFixed(2);
                           return x.toString() + '%';
                       },
-                      targets: [ 5, 10 ]
+                      targets: [ 5, 7, 10, 12 ]
                     },
                     {
                       render: function(data, type, row) {
@@ -242,7 +253,7 @@
                           }
                           return x;
                       },
-                      targets: [ 7, 12 ]
+                      targets: [ ]
                     }
                 ]
               });
@@ -361,9 +372,9 @@
         </th>
         <th>% Change,<br/>Last Day
         </th>
-        <th>Moving 7-day Avg<br/>of Positive Cases,<br/>Last 30 days
+        <th>Moving 7-day Avg<br/>of Positive Cases,<br/>Last 14 days
         </th>
-        <th>Overall Change<br/>in Moving Avg<br/>over 30 days
+        <th>Overall Change<br/>in Moving Avg<br/>over 14 days
         </th>
         <th>Total<br/>Deaths<br/>to Date
         </th>
@@ -371,9 +382,9 @@
         </th>
         <th>% Change,<br/>Last Day
         </th>
-        <th>Moving 7-day Avg<br/>of Deaths,<br/>Last 30 days
+        <th>Moving 7-day Avg<br/>of Deaths,<br/>Last 14 days
         </th>
-        <th>Overall Change<br/>in Moving Avg<br/>over 30 days
+        <th>Overall Change<br/>in Moving Avg<br/>over 14 days
         </th>
       </tr>
     </thead>
