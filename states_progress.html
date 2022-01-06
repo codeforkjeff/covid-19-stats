@@ -201,28 +201,28 @@
               }
             }
 
-            //$.ajax("daily.json").done(function(data) {
             $.ajax("https://storage.googleapis.com/codeforkjeff-covid-19-public/states_7day_avg.txt?" + new Date().getTime()).done(function(data) {
 
                 var rows = [];
-		        var lines = data.split("\n");
-		        lines.forEach(line => {
-		            var pieces = line.split("\t")
-		            var row = {
-		                state: pieces[0],
-		                date: pieces[1],
-                        positive: parseInt(pieces[2]),
-                        positiveIncrease: parseInt(pieces[3]),
-                        death: parseInt(pieces[4]),
-                        deathIncrease: parseInt(pieces[5]),
-                        positivityRate: parseFloat(pieces[6]),
-		                Avg7DayConfirmedIncrease: parseFloat(pieces[7]),
-		                Avg7DayDeathsIncrease: parseFloat(pieces[8]),
-                    Avg7DayPositivityRate: parseFloat(pieces[9])
-		            };
 
-		            rows.push(row);
-		        });
+                var lines = data.split("\n");
+                lines.forEach(line => {
+                    var pieces = line.split("\t")
+                    var row = {
+                        state: pieces[0],
+                        date: pieces[1],
+                            positive: parseInt(pieces[2]),
+                            positiveIncrease: parseInt(pieces[3]),
+                            death: parseInt(pieces[4]),
+                            deathIncrease: parseInt(pieces[5]),
+                            positivityRate: parseFloat(pieces[6]),
+                        Avg7DayConfirmedIncrease: parseFloat(pieces[7]),
+                        Avg7DayDeathsIncrease: parseFloat(pieces[8]),
+                        Avg7DayPositivityRate: parseFloat(pieces[9])
+                    };
+
+                    rows.push(row);
+                });
 
                 data = rows;
 
@@ -312,31 +312,15 @@
                   latest.positive,
                   latest.positiveIncrease,
                   latest.positiveIncrease / (latest.positive - latest.positiveIncrease),
-                  /*
-                  last5.reduce((acc, item) => acc + item.positiveIncrease, 0) / 5,
-                  last5.reduce((acc, item) => acc + (item.positiveIncrease / (item.positive - item.positiveIncrease)), 0) / 5,
-                  last14.reduce((acc, item) => acc + item.positiveIncrease, 0) / 14,
-                  last14.reduce((acc, item) => acc + (item.positiveIncrease / (item.positive - item.positiveIncrease)), 0) / 14,
-                  */
                   "<canvas class='centered sparkline' id='sparkline-positives-" + latest.state + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positives-start-" + latest.state + "'></span><span class='right' id='sparkline-positives-end-" + latest.state + "'></span></div>",
                   change_positive,
                   latestPositivity ? latestPositivity.positivityRate : null,
                   "<canvas class='centered sparkline' id='sparkline-positivity-" + latest.state + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-positivity-start-" + latest.state + "'></span><span class='right' id='sparkline-positivity-end-" + latest.state + "'></span></div>",
                   change_positivity,
-                  /*
-                  last5.reduce((acc, item) => acc + (item.positive / (item.totalTestResults)), 0) / 5,
-                  last14.reduce((acc, item) => acc + (item.positive / (item.totalTestResults)), 0) / 14,
-                  */
                   // deaths
                   latest.death,
                   latest.deathIncrease,
                   latest.deathIncrease / (latest.death - latest.deathIncrease),
-                  /*
-                  last5.reduce((acc, item) => acc + item.deathIncrease, 0) / 5,
-                  last5.reduce((acc, item) => acc + (item.deathIncrease / (item.death - item.deathIncrease)), 0) / 5,
-                  last14.reduce((acc, item) => acc + item.deathIncrease, 0) / 14,
-                  last14.reduce((acc, item) => acc + (item.deathIncrease / (item.death - item.deathIncrease)), 0) / 14,
-                  */
                   "<canvas class='centered sparkline' id='sparkline-deaths-" + latest.state + "' width='125' height='60'></canvas><div class='centered smalltext' style='width: 125px;'><span class='left' id='sparkline-deaths-start-" + latest.state + "'></span><span class='right' id='sparkline-deaths-end-" + latest.state + "'></span></div>",
                   change_death
                 ];
@@ -428,48 +412,22 @@
         </th>
         <th>% Change,<br/>Last Day
         </th>
-        <!--
-        <th>Avg Increase,<br/>Last 5 Days
-        </th>
-        <th>Avg % Increase,<br/>Last 5 Days
-        </th>
-        <th>Avg Increase,<br/>Last 14 Days
-        </th>
-        <th>Avg % Increase,<br/>Last 14 Days
-        </th>
-      -->
         <th>Moving 7-day Avg<br/>of Positive Cases,<br/>Last 14 days
         </th>
-        <th>Overall Change<br/>in Moving Avg<br/>over 14 days<!-- in <br/>Moving 7-day Avg<br/>of Positive Cases<br/> -->
+        <th>Overall Change<br/>in Moving Avg<br/>over 14 days
         </th>
         <th>Current<br/>Positivity Rate
         </th>
         <th>Moving 7-day Avg<br/>of Positivity Rate,<br/>Last 14 days
         </th>
-        <th>Overall Change<br/>in Moving Avg<br/>over 14 days<!-- in <br/>Moving 7-day Avg<br/>of Positivity Rate<br/> -->
+        <th>Overall Change<br/>in Moving Avg<br/>over 14 days
         </th>
-        <!--
-        <th>Avg Positivity Rate,<br/>Last 5 Days
-        </th>
-        <th>Avg Positivity Rate,<br/>Last 14 Days
-        </th>
-      -->
         <th>Total<br/>Deaths<br/>to Date
         </th>
         <th>New<br/>Deaths,<br/>Last Day
         </th>
         <th>% Change,<br/>Last Day
         </th>
-        <!--
-        <th>Avg Increase,<br/>Last 5 Days
-        </th>
-        <th>Avg % Increase,<br/>Last 5 Days
-        </th>
-        <th>Avg Increase,<br/>Last 14 Days
-        </th>
-        <th>Avg % Increase,<br/>Last 14 Days
-        </th>
-      -->
         <th>Moving 7-day Avg<br/>of Deaths,<br/>Last 14 days
         </th>
         <th>Overall Change<br/>in Moving Avg<br/>over 14 days
