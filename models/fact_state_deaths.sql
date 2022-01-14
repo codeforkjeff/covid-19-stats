@@ -33,18 +33,26 @@ avg_by_week as (
 select
     cd.State,
     cd.Week_Of_Year,
-    cd2.Week_Ending_Date,
     a.AvgDeaths_2014_2019,
+    cd2.Week_Ending_Date2020,
+    cd3.Week_Ending_Date2021,
     cd.All_Cause as Deaths2019,
     cd2.All_Cause as Deaths2020,
-    coalesce(cd2.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) AS Excess,
-    cast(coalesce(cd2.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) as float64) / a.AvgDeaths_2014_2019 * 100.0 as Pct,
+    cd3.All_Cause as Deaths2021,
+    coalesce(cd2.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) AS Excess2020,
+    cast(coalesce(cd2.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) as float64) / a.AvgDeaths_2014_2019 * 100.0 as ExcessPct2020,
+    coalesce(cd3.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) AS Excess2021,
+    cast(coalesce(cd3.All_Cause,0) - coalesce(a.AvgDeaths_2014_2019,0) as float64) / a.AvgDeaths_2014_2019 * 100.0 as ExcessPct2021,
     d.Covid19DeathsForWeek
 from {{ ref('final_cdc_deaths') }} cd
 join {{ ref('final_cdc_deaths') }} cd2
     ON cd.State = cd2.State
     AND cd.Year + 1 = cd2.Year
     AND cd.Week_Of_Year = cd2.Week_Of_Year
+left join {{ ref('final_cdc_deaths') }} cd3
+    ON cd.State = cd3.State
+    AND cd.Year + 2 = cd3.Year
+    AND cd.Week_Of_Year = cd3.Week_Of_Year
 left join avg_by_week a
     on cd.State = a.State
     and cd.Week_Of_Year = a.Week_Of_year
