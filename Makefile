@@ -38,7 +38,7 @@ stage/csse.loaded: \
 
 stage/cdc_deaths.loaded: \
 	$(modules) covid19stats/cdc_deaths_load.py \
-	stage/cdc_deaths_2019_2020.txt
+	stage/cdc_deaths_2020_2021.txt
 
 	python3 -m covid19stats.cdc_deaths_load
 

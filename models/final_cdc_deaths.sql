@@ -5,7 +5,7 @@ SELECT
     cast(MMWR_Week as int64) AS Week_Of_Year,
     cast(Week_Ending_Date AS date) AS Week_Ending_Date,
     cast(All_Cause as int64) as All_Cause
-FROM {{ source('public', 'raw_cdc_deaths_2019_2020') }}
+FROM {{ source('public', 'raw_cdc_deaths_2020_2021') }}
 UNION ALL
 SELECT
     Jurisdiction_of_Occurrence AS State,
@@ -17,5 +17,5 @@ SELECT
   	right(replace(substr(Week_Ending_Date, strpos(Week_Ending_Date,'/') + 1), '/2020', ''), 2)
     AS Date) AS Week_Ending_Date,
     cast(All__Cause as int64) as All_Cause
-FROM {{ source('public', 'raw_cdc_deaths_2014_2018') }}
+FROM {{ source('public', 'raw_cdc_deaths_2014_2019') }}
 

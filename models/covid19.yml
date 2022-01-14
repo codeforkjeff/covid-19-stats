@@ -6,10 +6,10 @@ sources:
     description: raw source data
     schema: source_tables
     tables:
-      - name: raw_cdc_deaths_2014_2018
+      - name: raw_cdc_deaths_2014_2019
         tags:
           - "cdc_deaths"
-      - name: raw_cdc_deaths_2019_2020
+      - name: raw_cdc_deaths_2020_2021
         tags:
           - "cdc_deaths"
       - name: raw_cdc_states
