@@ -1,10 +1,12 @@
 
+-- Grain of this table is state, week of year. this is a crazy table that probably doesn't make a lot of sense.
+
 with end_dates as (
     Select distinct
         Week_Ending_Date AS end_date
     FROM {{ ref('final_cdc_deaths') }}
-    WHERE
-        Year = 2020
+--    WHERE
+--        Year = 2020
 ),
 covid19deaths as (
     select
@@ -34,8 +36,8 @@ select
     cd.State,
     cd.Week_Of_Year,
     a.AvgDeaths_2014_2019,
-    cd2.Week_Ending_Date2020,
-    cd3.Week_Ending_Date2021,
+    cd2.Week_Ending_Date AS Week_Ending_Date2020,
+    cd3.Week_Ending_Date AS Week_Ending_Date2021,
     cd.All_Cause as Deaths2019,
     cd2.All_Cause as Deaths2020,
     cd3.All_Cause as Deaths2021,
