@@ -89,8 +89,9 @@ def load_csse():
 
             print(f"Writing {len(result)} rows to file")
 
-            f.write("\t".join(row))
-            f.write("\n")
+            for row in result:
+                f.write("\t".join(row))
+                f.write("\n")
 
     bq_load("stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
