@@ -73,7 +73,7 @@ def load_csse():
 
     all_rows = []
 
-    p = multiprocessing.Pool(20)
+    p = multiprocessing.Pool(2)
     for result in p.map(get_rows_from_csse_file, filtered_paths):
         all_rows = all_rows + result
     p.close()
