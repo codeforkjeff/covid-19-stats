@@ -73,26 +73,24 @@ def load_csse():
 
     all_rows = []
 
-    p = multiprocessing.Pool(2)
-    for result in p.map(get_rows_from_csse_file, filtered_paths):
-        all_rows = all_rows + result
-    p.close()
-
-
-    print(f"Writing {len(all_rows)} rows to the database")
+    # p = multiprocessing.Pool(2)
+    # for result in p.map(get_rows_from_csse_file, filtered_paths):
+    #     all_rows = all_rows + result
+    # p.close()
 
     start_time = time.perf_counter()
-
-    buf = io.StringIO()
-    for row in all_rows:
-        buf.write("\t".join(row))
-        buf.write("\n")
-    buf.seek(0)
 
     with codecs.open("stage/raw_csse.txt", "w", encoding='utf-8') as f:
         f.write("\t".join(['Date']+ordered_fields))
         f.write("\n")
-        f.write(buf.getvalue())
+
+        for path in filtered_paths:
+            result = get_rows_from_csse_file(path)
+
+            print(f"Writing {len(result)} rows to file")
+
+            f.write("\t".join(row))
+            f.write("\n")
 
     bq_load("stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
@@ -100,7 +98,7 @@ def load_csse():
     run_time = end_time - start_time
     rate = len(all_rows) / run_time
 
-    print(f"copy_from took {run_time:.4f} secs ({rate:.4f} rows/s)")
+    print(f"load_csse took {run_time:.4f} secs ({rate:.4f} rows/s)")
 
     # -- find rows that should havbe a fips code but doesn't.
     # -- I think these are actually okay to let by.
