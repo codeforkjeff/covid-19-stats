@@ -291,6 +291,7 @@ def sync_to_bucket(local_path, bucket_uri, content_type="text/plain"):
 
         #blob.upload_from_string(data, content_type=content_type)
         blob.upload_from_filename(filename=local_path_gzipped)
+        os.remove(local_path_gzipped)
         print(f"Uploaded {local_path} to {bucket_uri}")
         return True
     else:
