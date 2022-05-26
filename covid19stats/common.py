@@ -6,6 +6,7 @@ from collections import namedtuple
 import csv
 import datetime
 import functools
+import gzip
 import hashlib
 import io
 import os
