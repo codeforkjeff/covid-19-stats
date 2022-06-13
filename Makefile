@@ -64,7 +64,8 @@ data/stage/cdc_surveillance_cases.loaded: \
 
 data/stage/reference_data.loaded: \
 	$(modules) covid19stats/reference_data_load.py \
-	reference/*
+	reference/raw_state_abbreviations.csv \
+	data/reference/*
 
 	python3 -m covid19stats.reference_data_load
 

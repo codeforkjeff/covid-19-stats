@@ -15,13 +15,13 @@ def download_county_population():
 
     download_and_update( \
         'https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/counties/totals/co-est2019-alldata.csv', \
-        "reference/co-est2019-alldata.csv", \
+        "data/reference/co-est2019-alldata.csv", \
         threshold=threshold)
 
 
 def download_county_gazetteer():
 
-    zip_path = "reference/2019_Gaz_counties_national.zip"
+    zip_path = "data/reference/2019_Gaz_counties_national.zip"
 
     # this file doesn't change often, if at all, so every month
     threshold = 60 * 60 * 24 * 30
@@ -33,7 +33,7 @@ def download_county_gazetteer():
 
     if updated:
         with zipfile.ZipFile(zip_path) as zipf:
-            zipf.extractall("reference/")
+            zipf.extractall("data/reference/")
 
 
 def download_county_acs_vars():
@@ -46,7 +46,7 @@ def download_county_acs_vars():
 
     updated = download_and_update( \
         "https://api.census.gov/data/2018/acs/acs5/cprofile?get=GEO_ID,CP03_2014_2018_062E,CP05_2014_2018_018E&for=county:*", \
-        "reference/county_acs_2018.json", \
+        "data/reference/county_acs_2018.json", \
         threshold=threshold)
 
 
@@ -57,7 +57,7 @@ def download_state_info():
 
     download_and_update( \
         'http://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-alldata.csv', \
-        "reference/nst-est2019-alldata.csv", \
+        "data/reference/nst-est2019-alldata.csv", \
         threshold=threshold)
 
 
@@ -67,7 +67,7 @@ def download_county_boundary_file():
 
     download_and_update( \
         'https://eric.clst.org/assets/wiki/uploads/Stuff/gz_2010_us_050_00_500k.json', \
-        "reference/gz_2010_us_050_00_500k.json", \
+        "data/reference/gz_2010_us_050_00_500k.json", \
         threshold=None)
 
 
