@@ -65,7 +65,7 @@ def get_rows_from_csse_file(path):
 def load_csse():
 
     # TODO: should probably use path relative to this .py file
-    spec = os.path.join('..', 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
+    spec = os.path.join('data/COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
     print(f"Looking for files: {spec}")
     paths = [Path(path, get_sortable_date(path)) for path in glob.glob(spec)]
 
