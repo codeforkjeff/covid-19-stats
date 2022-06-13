@@ -80,7 +80,7 @@ def load_csse():
         f.write("\n")
 
         p = multiprocessing.pool.ThreadPool(4)
-        for result in p.map(get_rows_from_csse_file, filtered_paths):
+        for result in p.imap_unordered(get_rows_from_csse_file, filtered_paths):
             print(f"Writing {len(result)} rows to file")
             num_rows += len(result)
             for row in result:
