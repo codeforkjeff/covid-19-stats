@@ -3,7 +3,7 @@ import codecs
 import csv
 import glob
 import io
-import multiprocessing
+import multiprocessing.pool
 import os
 import os.path
 import time
@@ -79,7 +79,7 @@ def load_csse():
         f.write("\t".join(['Date']+ordered_fields))
         f.write("\n")
 
-        p = multiprocessing.Pool(4)
+        p = multiprocessing.pool.ThreadPool(4)
         for result in p.map(get_rows_from_csse_file, filtered_paths):
             print(f"Writing {len(result)} rows to file")
             num_rows += len(result)
