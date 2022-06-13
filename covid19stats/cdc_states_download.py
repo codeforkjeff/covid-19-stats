@@ -9,7 +9,7 @@ def download_cdc_states_data():
 
     download_and_update( \
         'https://data.cdc.gov/api/views/9mfq-cb36/rows.tsv?accessType=DOWNLOAD&bom=true', \
-        "stage/cdc_states.tsv", \
+        "data/stage/cdc_states.tsv", \
         threshold=threshold)
 
 

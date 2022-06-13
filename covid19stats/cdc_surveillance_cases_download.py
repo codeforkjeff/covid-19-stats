@@ -11,7 +11,7 @@ def download_cdc_surveillance_cases_data():
 
     download_and_update( \
         'https://data.cdc.gov/api/views/vbim-akqf/rows.tsv?accessType=DOWNLOAD&bom=true', \
-        "stage/cdc_surveillance_cases.tsv", \
+        "data/stage/cdc_surveillance_cases.tsv", \
         threshold=threshold)
 
 

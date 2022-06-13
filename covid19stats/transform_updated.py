@@ -7,7 +7,7 @@ import shlex
 import subprocess
 import sys
 
-update_file = "stage/transforms.updated"
+update_file = "data/stage/transforms.updated"
 
 def transform_updated():
     """
@@ -21,7 +21,7 @@ def transform_updated():
 
     models = []
 
-    for path in glob.glob("stage/*.loaded"):
+    for path in glob.glob("data/stage/*.loaded"):
         base = os.path.basename(path)
         tag = base[:base.rindex(".")]
         last_loaded = os.stat(path).st_mtime

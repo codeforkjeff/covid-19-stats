@@ -76,13 +76,13 @@ def load_raw_date():
         ])
         d = d + td_1day
 
-    with codecs.open('stage/raw_date.csv', 'w', encoding='utf-8') as f:
+    with codecs.open('data/stage/raw_date.csv', 'w', encoding='utf-8') as f:
         writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['Date', 'Minus1Day', 'Minus7Days', 'Minus14Days', 'Minus30Days'])
         for row in rows:
             writer.writerow(row)
 
-    bq_load("stage/raw_date.csv", f"gs://{sources_bucket}/raw_date.csv", 'source_tables.raw_date')
+    bq_load("data/stage/raw_date.csv", f"gs://{sources_bucket}/raw_date.csv", 'source_tables.raw_date')
 
 
 def load_raw_state_abbreviations():
@@ -106,7 +106,7 @@ def load_reference_data():
 
     load_raw_state_abbreviations()
 
-    touch_file('stage/reference_data.loaded')
+    touch_file('data/stage/reference_data.loaded')
 
 
 if __name__ == "__main__":
