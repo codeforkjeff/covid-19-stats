@@ -22,4 +22,5 @@ VOLUME /root/covid-19-stats
 RUN touch /root/.dbt/profiles.yml
 RUN touch /root/service-account.json
 
-ENTRYPOINT main.sh
+ENTRYPOINT ["/root/covid-19-stats/main.sh"]
+
