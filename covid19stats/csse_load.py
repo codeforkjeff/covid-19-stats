@@ -65,7 +65,7 @@ def get_rows_from_csse_file(path):
 def load_csse():
 
     # TODO: should probably use path relative to this .py file
-    spec = os.path.join('..', 'COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
+    spec = os.path.join('data/COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv')
     print(f"Looking for files: {spec}")
     paths = [Path(path, get_sortable_date(path)) for path in glob.glob(spec)]
 
@@ -80,7 +80,7 @@ def load_csse():
 
     start_time = time.perf_counter()
 
-    with codecs.open("stage/raw_csse.txt", "w", encoding='utf-8') as f:
+    with codecs.open("data/stage/raw_csse.txt", "w", encoding='utf-8') as f:
         f.write("\t".join(['Date']+ordered_fields))
         f.write("\n")
 
@@ -93,7 +93,7 @@ def load_csse():
                 f.write("\t".join(row))
                 f.write("\n")
 
-    bq_load("stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
+    bq_load("data/stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
     end_time = time.perf_counter()
     run_time = end_time - start_time
@@ -110,7 +110,7 @@ def load_csse():
     #     shouldhavefips = 1
     #     and (fips is null or length(fips) <> 5 or fips = '00000')
 
-    touch_file('stage/csse.loaded')
+    touch_file('data/stage/csse.loaded')
 
 
 if __name__ == "__main__":

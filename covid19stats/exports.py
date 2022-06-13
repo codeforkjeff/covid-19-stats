@@ -12,7 +12,7 @@ from .common import get_db_conn, timer, row_to_dict, get_bq_client, sync_to_buck
 
 public_bucket = 'codeforkjeff-covid-19-public'
 
-last_exported_file = "stage/last_exported"
+last_exported_file = "data/stage/last_exported"
 
 @timer
 def export_counties_ranked():

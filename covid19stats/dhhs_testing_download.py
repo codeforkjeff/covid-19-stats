@@ -10,7 +10,7 @@ def download_dhhs_testing_data():
     # https://healthdata.gov/dataset/COVID-19-Diagnostic-Laboratory-Testing-PCR-Testing/j8mb-icvb
     download_and_update( \
         'https://healthdata.gov/api/views/j8mb-icvb/rows.tsv?accessType=DOWNLOAD&bom=true', \
-        "stage/dhhs_testing.tsv", \
+        "data/stage/dhhs_testing.tsv", \
         threshold=threshold)
 
 
