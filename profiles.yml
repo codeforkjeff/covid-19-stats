@@ -1,0 +1,16 @@
+
+covid19_bigquery:
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: covid-19-stats-294405
+      dataset: models
+      threads: 10
+      keyfile: /root/service-account.json
+      timeout_seconds: 900
+      location: US
+      priority: interactive
+      retries: 1
+
+  target: dev
