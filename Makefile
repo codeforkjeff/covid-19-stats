@@ -35,7 +35,7 @@ load: \
 
 data/stage/csse.loaded: \
 	$(modules) covid19stats/csse_load.py \
-	../COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv
+	data/COVID-19/csse_covid_19_data/csse_covid_19_daily_reports/*.csv
 
 	python3 -m covid19stats.csse_load
 
