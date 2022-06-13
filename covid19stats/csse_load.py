@@ -71,28 +71,33 @@ def load_csse():
 
     filtered_paths = [p for p in paths if p.date >= '20200322']
 
-    start_time = time.perf_counter()
+    all_rows = []
 
-    num_rows = 0
+    # p = multiprocessing.Pool(2)
+    # for result in p.map(get_rows_from_csse_file, filtered_paths):
+    #     all_rows = all_rows + result
+    # p.close()
+
+    start_time = time.perf_counter()
 
     with codecs.open("data/stage/raw_csse.txt", "w", encoding='utf-8') as f:
         f.write("\t".join(['Date']+ordered_fields))
         f.write("\n")
 
-        p = multiprocessing.Pool(4)
-        for result in p.map(get_rows_from_csse_file, filtered_paths):
+        for path in filtered_paths:
+            result = get_rows_from_csse_file(path)
+
             print(f"Writing {len(result)} rows to file")
-            num_rows += len(result)
+
             for row in result:
                 f.write("\t".join(row))
                 f.write("\n")
-        p.close()
 
     bq_load("data/stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
     end_time = time.perf_counter()
     run_time = end_time - start_time
-    rate = num_rows / run_time
+    rate = len(all_rows) / run_time
 
     print(f"load_csse took {run_time:.4f} secs ({rate:.4f} rows/s)")
 
