@@ -15,8 +15,10 @@ idea to do a fresh clone from scratch.)
 
 # How to Run This
 
-Setup a BigQuery instance. Create a service account for it and 
+Create a BigQuery project. Create a service account for it and
 put the credentials in a file named `service-account.json` in this directory.
+
+Update `profiles.yml` with information about your BigQuery project.
 
 (Re)build the image using the Dockerfile:
 
