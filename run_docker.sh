@@ -10,7 +10,6 @@ exec docker run \
      --name covid-19-stats-container \
      -v "$(pwd)":"/root/covid-19-stats" \
      -v covid-19-stats-volume:"/root/covid-19-stats/data" \
-     -v "$HOME/.ssh":"/root/.ssh" \
      -v "$(pwd)/service-account.json":"/root/service-account.json" \
      -v "$(pwd)/profiles.yml":"/root/.dbt/profiles.yml" \
      covid-19-stats-image

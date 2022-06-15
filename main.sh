@@ -17,7 +17,7 @@ echo Using project directory: $SCRIPT_DIR
 cd $SCRIPT_DIR/data
 
 if [ ! -d "COVID-19" ]; then
-    git clone git@github.com:CSSEGISandData/COVID-19.git
+    git clone https://github.com/CSSEGISandData/COVID-19.git
 fi
 
 # setup environments / make sure they're up to date

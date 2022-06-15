@@ -7,9 +7,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get -y install git cmake make python3 python3-pip python3-venv sqlite3 vim virtualenvwrapper
 
-RUN git config --global user.email "jeff@codefork.com"
-RUN git config --global user.name "codeforkjeff"
-
 WORKDIR /root
 
 RUN mkdir /root/.dbt
