@@ -1,8 +1,11 @@
+#!/bin/bash
 
 # ubuntu 20.04
 source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
 
 #### extract
+
+echo "==== Extract at `date`"
 
 workon covid-19-stats-load
 
@@ -10,15 +13,21 @@ make extract
 
 #### load
 
+echo "==== Load at `date`"
+
 make load
 
 #### transform
+
+echo "==== Transform at `date`"
 
 workon covid-19-stats-dbt
 
 make transform
 
 #### export
+
+echo "==== Export at `date`"
 
 workon covid-19-stats-load
 
