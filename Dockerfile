@@ -19,7 +19,7 @@ WORKDIR covid-19-stats
 
 COPY requirements-dbt.txt .
 COPY requirements-load.txt .
-COPY setup_envs.sh .
+COPY create_envs.sh .
 
 RUN ./create_envs.sh
 
