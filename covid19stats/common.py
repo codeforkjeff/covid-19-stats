@@ -38,9 +38,9 @@ bq_path = "/opt/google-cloud-sdk/bin/bq"
 
 bq_global_opts = "--project_id covid-19-stats-294405"
 
-sources_bucket = 'codeforkjeff-covid-19-sources'
+sources_bucket = os.environ['BUCKET_SOURCES']
 
-public_bucket = 'codeforkjeff-covid-19-public'
+public_bucket = os.environ['BUCKET_PUBLIC']
 
 def timer(func):
     """Print the runtime of the decorated function"""
