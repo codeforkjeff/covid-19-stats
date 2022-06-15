@@ -7,8 +7,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get -y install git cmake make python3 python3-pip python3-venv sqlite3 vim virtualenvwrapper
 
-ENV WORKON_HOME /root/covid-19-stats/data/.virtualenvs
-
 WORKDIR /root
 
 RUN mkdir .dbt
