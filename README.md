@@ -15,10 +15,17 @@ idea to do a fresh clone from scratch.)
 
 # How to Run This
 
-Create a BigQuery project. Create a service account for it and
-put the credentials in a file named `service-account.json` in this directory.
+Create a new project on the Google Cloud Platform. Within it, create a BigQuery project
+and two Cloud Storage buckets.
 
-Update `profiles.yml` with information about your BigQuery project.
+Under IAM, create a service account and a key for it, making sure to download
+the [key file](https://cloud.google.com/iam/docs/creating-managing-service-account-keys). 
+Save this file as `service-account.json` in this directory.
+
+Update `profiles.yml` with information about your BigQuery project. See the 
+[dbt docs](https://docs.getdbt.com/reference/warehouse-profiles/bigquery-profile).
+
+Edit `run_docker.sh` and set the bucket names accordingly.
 
 (Re)build the image using the Dockerfile:
 
