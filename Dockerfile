@@ -21,7 +21,7 @@ COPY requirements-dbt.txt .
 COPY requirements-load.txt .
 COPY create_envs.sh .
 
-RUN ./create_envs.sh
+RUN /bin/bash ./create_envs.sh
 
 VOLUME /root/covid-19-stats
 
@@ -31,6 +31,6 @@ RUN touch /root/service-account.json
 
 COPY . .
 
-WORKDIR /root
+WORKDIR /root/covid-19-stats
 
-ENTRYPOINT ["/root/covid-19-stats/main.sh"]
+ENTRYPOINT ["/root/covid-19-stats/elt"]
