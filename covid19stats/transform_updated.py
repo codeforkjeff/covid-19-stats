@@ -28,9 +28,9 @@ def transform_updated():
         if last_loaded > last_transformed:
             models.append(tag)
 
-    if len(models)> 0 or last_transformed != 0:
+    if len(models)> 0 or last_transformed == 0:
         cmd = "dbt run"
-        if last_transformed != 0:
+        if len(models)> 0:
             cmd += " --models " + " ".join(["@tag:" + model for model in models])
         print(f"Runnning: {cmd}", flush=True)
         subprocess.run(shlex.split(cmd), check=True)
