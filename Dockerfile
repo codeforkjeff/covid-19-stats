@@ -21,14 +21,10 @@ COPY create_envs.sh .
 
 RUN /bin/bash ./create_envs.sh
 
-# paths must exist as files otherwise -v option in "docker run" will create dirs
-RUN touch /root/.dbt/profiles.yml
-RUN touch /root/service-account.json
-
 COPY . .
 
 WORKDIR /root/covid-19-stats
 
 VOLUME /root/covid-19-stats/data
 
-ENTRYPOINT ["/root/covid-19-stats/elt"]
+CMD /root/covid-19-stats/elt
