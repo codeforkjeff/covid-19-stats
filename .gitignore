@@ -9,4 +9,6 @@ target/
 dbt_modules/
 logs/
 
+*.log
+
 service-account.json
