@@ -13,9 +13,9 @@ extract:
 	mkdir -p data/stage
 	mkdir -p data/reference
 
-	if [ ! -d "data/COVID-19" ]; then git clone https://github.com/CSSEGISandData/COVID-19.git; fi
+	if [ ! -d "data/COVID-19" ]; then git clone --depth 1 https://github.com/CSSEGISandData/COVID-19.git; fi
 
-	cd data/COVID-19 && git pull
+	cd data/COVID-19 && git pull --depth 1
 
 	python3 -m covid19stats.covidtracking_download
 
