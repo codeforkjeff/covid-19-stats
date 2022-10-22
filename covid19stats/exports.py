@@ -133,7 +133,7 @@ def export_counties_rate_of_change():
         ORDER BY t.FIPS, Date;
     ''')
 
-    rows = query_job.result(page_size=1000)
+    rows = query_job.result(page_size=10000)
 
     # preserve camelcase
 
@@ -205,7 +205,7 @@ def export_states_7day_avg():
         ORDER BY State, date
     ''')
 
-    rows = query_job.result(page_size=1000)
+    rows = query_job.result(page_size=10000)
 
     with codecs.open("data/states_7day_avg.txt", "w", encoding='utf8') as f:
         f.write("State\tDate\tpositive\tpositiveIncrease\tdeath\tdeathIncrease\tpositivityRate\tAvg7DayConfirmedIncrease\tAvg7DayDeathsIncrease\tAvg7DayPositivityRate\n")
@@ -236,7 +236,7 @@ def export_counties_7day_avg():
         ORDER BY date, FIPS;
     ''')
 
-    rows = query_job.result(page_size=1000)
+    rows = query_job.result(page_size=10000)
 
     # with codecs.open("data/counties_7day_avg.json", "w", encoding='utf8') as f:
     #     f.write(json.dumps([row_to_dict(row) for row in rows]))
@@ -270,7 +270,7 @@ def export_counties_casesper100k():
         ORDER BY FIPS, date;
     ''')
 
-    rows = query_job.result()
+    rows = query_job.result(page_size=10000)
 
     with codecs.open("data/counties_casesper100k.txt", "w", encoding='utf8') as f:
         f.write("FIPS\tDate\tCasesPer100k\n")
