@@ -71,7 +71,7 @@ def load_csse():
 
     filtered_paths = [p for p in paths if p.date >= '20200322']
 
-    all_rows = []
+    row_count = 0
 
     # p = multiprocessing.Pool(2)
     # for result in p.map(get_rows_from_csse_file, filtered_paths):
@@ -93,11 +93,13 @@ def load_csse():
                 f.write("\t".join(row))
                 f.write("\n")
 
+            row_count = row_count + len(result)
+
     bq_load("data/stage/raw_csse.txt", f"gs://{sources_bucket}/raw_csse.txt", 'source_tables.raw_csse', delimiter="\t")
 
     end_time = time.perf_counter()
     run_time = end_time - start_time
-    rate = len(all_rows) / run_time
+    rate = row_count / run_time
 
     print(f"load_csse took {run_time:.4f} secs ({rate:.4f} rows/s)")
 
