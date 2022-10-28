@@ -15,7 +15,7 @@ extract:
 
 	if [ ! -d "data/COVID-19" ]; then cd data && git clone --depth 1 https://github.com/CSSEGISandData/COVID-19.git; fi
 
-	cd data/COVID-19 && git pull --depth 1
+	cd data/COVID-19 && git pull --allow-unrelated-histories --depth 1
 
 	python3 -m covid19stats.covidtracking_download
 
