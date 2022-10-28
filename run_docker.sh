@@ -5,6 +5,10 @@
 # to debug, add this line above the image name:
 # -i -t --entrypoint /bin/bash
 
+if [ "$1" = "debug" ]; then
+	DEBUG_ARGS="-i -t --entrypoint /bin/bash"
+fi
+
 exec docker run \
      --rm \
      --name covid-19-stats-container \
@@ -13,4 +17,4 @@ exec docker run \
      -v covid-19-stats-volume:"/root/covid-19-stats/data" \
      -v "$(pwd)/service-account.json":"/root/service-account.json" \
      -v "$(pwd)/profiles.yml":"/root/.dbt/profiles.yml" \
-     covid-19-stats-image
+     $DEBUG_ARGS covid-19-stats-image
